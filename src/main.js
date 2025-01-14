@@ -6,6 +6,9 @@ let greetMsgEl;
 async function greet() {
   // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
   greetMsgEl.textContent = await invoke("greet", { name: greetInputEl.value });
+
+  let settings = await invoke("get_settings");
+  console.log(settings);
 }
 
 window.addEventListener("DOMContentLoaded", () => {
