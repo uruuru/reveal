@@ -1,4 +1,5 @@
 const { invoke } = window.__TAURI__.core;
+const { message } = window.__TAURI__.dialog;
 
 function isMobile() {
     return navigator.maxTouchPoints > 0;
@@ -17,11 +18,10 @@ async function printDebug() {
             .join('\n');
 
         let backendInfos = await invoke('debug_infos');
-        alert(`${backendInfos}\nFrontend:\n${frontendInfos}`);
+        await message(`${backendInfos}\nFrontend:\n${frontendInfos}`, { title: 'Debug Information', kind: 'info' });
     } catch (e) {
-        alert(`Error printing debug infos: \n\t${e}.`);
+        await message(`Error printing debug infos: \n\t${e}.`, { title: 'Tauri', kind: 'error' });
     }
 }
-
 
 export { isMobile, printDebug };
