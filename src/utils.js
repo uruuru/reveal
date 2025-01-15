@@ -18,7 +18,7 @@ async function printDebug() {
         let backendInfos = await invoke('debug_infos');
         await message(`${backendInfos}\n… Frontend …\n${frontendInfos}`, { title: 'Debug Information', kind: 'info' });
     } catch (e) {
-        await message(`Error printing debug infos: \n\t${e}.`, { title: 'Tauri', kind: 'error' });
+        await message(`Error printing debug infos: \n\t${e}.`, { kind: 'error' });
     }
 }
 
