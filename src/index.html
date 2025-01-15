@@ -1,40 +1,76 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
-    <script type="module" src="/main.js" defer></script>
-  </head>
 
-  <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reveal!</title>
+  <script type="module" src="/main.js" defer></script>
+</head>
 
-      <div class="row">
-        <a href="https://tauri.app" target="_blank">
-          <img src="/assets/tauri.svg" class="logo tauri" alt="Tauri logo" />
-        </a>
-        <a
-          href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"
-          target="_blank"
-        >
-          <img
-            src="/assets/javascript.svg"
-            class="logo vanilla"
-            alt="JavaScript logo"
-          />
-        </a>
+<body>
+  <div id="controls" class="controls">
+    <div class="row1">
+      <span id="progress">x / x</span>
+      <button class="control" name="open" data-event="l">📂</button>
+      <button class="control" name="settings" data-event="s">⚙</button>
+    </div>
+    <div class="row2">
+      <!-- ↪ ↩ ⟳ -->
+      <button class="control" data-event="p">⏮</button>
+      <button class="control" data-event="r">↺</button>
+    </div>
+    <div class="row3">
+      <button class="control" data-event="u">▶</button>
+      <button class="control" data-event="c">⎚</button>
+      <button class="control" data-event="n">⏭</button>
+    </div>
+  </div>
+
+  <div id="settings" class="settings">
+    <fieldset>
+      <legend>General</legend>
+      <div>
+        <label for="input-show-controls">Show controls: </label>
+        <input type="checkbox" id="input-show-controls" name="input-show-controls" />
       </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+      <div>
+        <label for="input-path">Input path:</label>
+        <input type="text" id="input-path" name="input-path" />
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Covering</legend>
+      <div class="slidecontainer">
+        <label for="input-object-count">Number of objects: </label>
+        <input type="range" min="10" max="100" value="10" class="slider" id="input-object-count">
+      </div>
+      <div>
+        <label for="input-object-type">Cover with: </label>
+        <select name="input-object-tpye" id="input-object-type">
+          <option value="triangles">Triangles</option>
+          <option value="rectangles">Rectangles</option>
+        </select>
+      </div>
+    </fieldset>
+    <div class="settings-row">
+      <button class="settings-done control" data-event="d">Done</button>
+    </div>
+    <div class="settings-row">
+      <button class="control" data-event="i">Debug ℹ</button>
+      <button class="control" data-event="y">Reset</button>
+    </div>
+  </div>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
-      <img id="image-container" src="" alt="">
-    </main>
-  </body>
+  <main class="container">
+    <svg id="overlay-svg" preserveAspectRatio="meet" xmlns="http://www.w3.org/2000/svg"></svg>
+    <img id="image-container" src="" alt="">
+  </main>
+
+  <div class="footer">
+    <span id="location">Current location: </span>
+  </div>
+</body>
+
 </html>
