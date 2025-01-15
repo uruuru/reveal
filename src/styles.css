@@ -71,23 +71,6 @@ button {
   outline: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-
-  button:active {
-    background-color: #0f0f0f69;
-  }
-}
-
 svg,
 img {
   position: absolute;
@@ -226,6 +209,10 @@ div.settings-row {
   color: white;
 }
 
+/* ----------------------------------------------------- */
+/*        Smaller screen                                 */
+/* ----------------------------------------------------- */
+
 @media (max-width: 480px) {
   .settings fieldset > div {
     flex-direction: column;
@@ -236,5 +223,30 @@ div.settings-row {
   label {
     min-width: auto;
     margin-bottom: 2px;
+  }
+}
+
+/* ----------------------------------------------------- */
+/*        Dark theme                                     */
+/* ----------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f6f6f6;
+    background-color: #2f2f2f;
+  }
+
+  input,
+  button {
+    color: #ffffff;
+    background-color: #0f0f0f98;
+  }
+
+  button:active {
+    background-color: #0f0f0f69;
+  }
+
+  .settings {
+    background-color: #2f2f2f;
   }
 }
