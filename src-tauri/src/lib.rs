@@ -1,9 +1,11 @@
+mod common;
+mod plane_covering;
+mod utils;
+
 use base64::engine::{general_purpose, Engine as _};
 use common::{RevealObject, RevealSettings};
+use itertools::Itertools;
 use tauri::AppHandle;
-
-mod common;
-mod utils;
 
 #[tauri::command]
 fn get_settings() -> RevealSettings {
@@ -28,6 +30,22 @@ fn example() -> RevealObject {
     }
 }
 
+#[tauri::command]
+fn load_covering(width: f64, height: f64, n: usize) -> Result<String, String> {
+    let covering = plane_covering::cover_rectangles(n, width, height);
+    let serialized = covering
+        .iter()
+        .map(|polygon| {
+            polygon
+                .pnts
+                .iter()
+                .map(|p| format!("{},{}", p.x, p.y).to_string())
+                .join(";")
+        })
+        .join("#");
+    Ok(serialized)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -39,7 +57,12 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![debug_infos, get_settings, example])
+        .invoke_handler(tauri::generate_handler![
+            debug_infos,
+            get_settings,
+            example,
+            load_covering,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
