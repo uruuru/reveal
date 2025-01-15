@@ -26,4 +26,5 @@ tauri-plugin-log = "2"
 log = "0.4.25"
 ts-rs = "10.1.0"
 tauri-plugin-os = "2"
+base64 = "0.22.1"
 

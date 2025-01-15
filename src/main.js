@@ -9,6 +9,9 @@ async function greet() {
 
   let settings = await invoke("get_settings");
   console.log(settings);
+
+  let revealObject = await invoke("example");
+  document.querySelector("#image-container").src = `data:${revealObject.image_media_type};base64,${revealObject.image}`;
 }
 
 window.addEventListener("DOMContentLoaded", () => {
