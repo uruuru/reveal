@@ -13,12 +13,10 @@ async function printDebug() {
             `Touch events supported: ${window.TouchEvent ? 'true' : 'false'}`,
             `Max touch points: ${navigator.maxTouchPoints}`,
             `User agent: ${navigator.userAgent}`
-        ]
-            .map(s => "\t" + s)
-            .join('\n');
+        ].join('\n');
 
         let backendInfos = await invoke('debug_infos');
-        await message(`${backendInfos}\nFrontend:\n${frontendInfos}`, { title: 'Debug Information', kind: 'info' });
+        await message(`${backendInfos}\n… Frontend …\n${frontendInfos}`, { title: 'Debug Information', kind: 'info' });
     } catch (e) {
         await message(`Error printing debug infos: \n\t${e}.`, { title: 'Tauri', kind: 'error' });
     }
