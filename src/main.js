@@ -1,4 +1,7 @@
 const { invoke } = window.__TAURI__.core;
+const { debug } = window.__TAURI__.log;
+
+import { printDebug } from './utils.js';
 
 let greetInputEl;
 let greetMsgEl;
@@ -14,11 +17,9 @@ async function greet() {
   document.querySelector("#image-container").src = `data:${revealObject.image_media_type};base64,${revealObject.image}`;
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
+window.addEventListener("DOMContentLoaded", async () => {
+
+  debug("Loading finished.");
+  await printDebug();
+
 });
