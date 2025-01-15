@@ -1,4 +1,4 @@
-name: reveal
+name: Reveal!
 options:
   bundleIdPrefix: li.oiu.reveal
   deploymentTarget:
@@ -10,7 +10,7 @@ configs:
 settingGroups:
   app:
     base:
-      PRODUCT_NAME: reveal
+      PRODUCT_NAME: Reveal!
       PRODUCT_BUNDLE_IDENTIFIER: li.oiu.reveal
 targetTemplates:
   app:

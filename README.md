@@ -27,3 +27,16 @@ This template should help get you started developing with Tauri in vanilla HTML,
     * Answer options
     * Correct answer
   * Settings
+
+
+# Building
+
+macOS `.app` bundle 
+```
+cargo tauri build --bundles app --target universal-apple-darwin
+```
+
+iOS `.ipa`
+```
+cargo tauri ios build
+```
