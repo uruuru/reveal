@@ -200,11 +200,101 @@ async function executeAction(action_identifier) {
       break;
     case Action.settings_done:
       state.settingsDiv.style.display = 'none';
+      // TODO react to changes accordingly
       break;
     case Action.settings_reset:
+      // TODO
       break;
     default:
   }
+}
+
+function registerControlButtons() {
+  document.querySelectorAll(".control").forEach((button) => {
+    button.addEventListener('pointerup', (e) => {
+      let action = button.dataset.event.toLowerCase();
+      executeAction(action);
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    });
+  });
+}
+
+function registerKeyboard() {
+  document.addEventListener('keyup', (event) => {
+    // By default, react to the key as specified by the 'data-event' in the html.
+    // But additionally react to some special keys:
+    let action = event.key.toLowerCase();
+    switch (event.code) {
+      case 'Space':
+        action = Action.uncover;
+        break;
+      case 'Delete':
+        action = Action.clear;
+    }
+    executeAction(action);
+  });
+}
+
+function registerTouch() {
+  // Simple touch shall act as a single uncover.
+  // Some care has to be taken to not react to pressing some of the other UI elements,
+  // be it regular control buttons or settings.
+  document.addEventListener('pointerup', (e) => {
+    // TODO ignore every action on the settings pane
+    if (e.target === state.inputObjectCount || e.target == state.inputShowControls) {
+      return;
+    }
+    executeAction(Action.uncover);
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  });
+
+  // Handle swipe interaction:
+  //   down:  fully uncover
+  //   up:    reset covering (fully cover)
+  //   right: next image
+  //   left:  previous image
+  let touchStart = { x: 0, y: 0, };
+  let touchEnd = { x: 0, y: 0, };
+
+  function reactToSwipe() {
+    // TODO make the minimal swipe distance configurable in settings
+    const threshold = 30;
+    let absX = Math.abs(touchStart.x - touchEnd.x);
+    let absY = Math.abs(touchStart.y - touchEnd.y);
+    if (absX > absY && absX > threshold) {
+      // horizontal
+      if (touchEnd.x < touchStart.x) {
+        executeAction(Action.previous); // left
+      } else {
+        executeAction(Action.next); // right
+      }
+    } else if (absY > threshold) {
+      // vertical
+      if (touchEnd.y < touchStart.y) {
+        executeAction(Action.reset); // up
+      } else {
+        executeAction(Action.clear); // down
+      }
+    }
+  }
+
+  // TODO there's some undesired behavior when zooming,
+  // i.e., the user "pinches" into the image to look at some detail.
+  // Maybe we can avoid this by checking for the number of touch points?
+  //   (e.touches.length)
+  // Note that the user may start touching with one finger only and 
+  // adding the other one only later.
+  document.addEventListener('touchstart', e => {
+    touchStart.x = e.changedTouches[0].screenX;
+    touchStart.y = e.changedTouches[0].screenY;
+  });
+  document.addEventListener('touchend', e => {
+    touchEnd.x = e.changedTouches[0].screenX;
+    touchEnd.y = e.changedTouches[0].screenY;
+    reactToSwipe()
+  });
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
@@ -232,14 +322,12 @@ window.addEventListener("DOMContentLoaded", async () => {
   initializeSettingsListeners(state);
   debug(`Loaded initial settings: ${JSON.stringify(state.settings, null, "  ")}.`);
 
-  document.querySelectorAll(".control").forEach((button) => {
-    button.addEventListener('pointerup', (e) => {
-      let action = button.dataset.event.toLowerCase();
-      executeAction(action);
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    });
-  });
+  // Initialize interactivity
+  registerControlButtons();
+
+  // TODO register only if available?
+  registerKeyboard();
+  registerTouch();
 
   debug("Done.");
 });
