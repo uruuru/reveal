@@ -2,12 +2,14 @@ use serde::Serialize;
 use std::path::PathBuf;
 use ts_rs::TS;
 
+#[derive(Default)]
 pub struct RevealState {
     pub images: Vec<PathBuf>,
     pub image_index: usize,
+    pub settings: RevealSettings,
 }
 
-#[derive(Default, Serialize, TS)]
+#[derive(Clone, Default, Serialize, TS)]
 #[ts(export)]
 pub enum CoveringType {
     #[default]
@@ -15,17 +17,17 @@ pub enum CoveringType {
     Rectangles,
 }
 
-#[derive(Default, Serialize, TS)]
+#[derive(Clone, Default, Serialize, TS)]
 #[ts(export)]
 pub enum UncoveringStrategy {
     #[default]
     Manual,
 }
 
-#[derive(Serialize, TS)]
+#[derive(Clone, Serialize, TS)]
 #[ts(export)]
 pub struct RevealSettings {
-    pub image_source: Option<PathBuf>,
+    pub image_source: Option<String>,
     pub covering_type: CoveringType,
     pub uncovering_strategy: UncoveringStrategy,
     pub show_control_buttons: bool,

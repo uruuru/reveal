@@ -3,12 +3,14 @@ mod plane_covering;
 mod utils;
 
 use base64::engine::{general_purpose, Engine as _};
-use common::{Polygon, RevealObject, RevealSettings};
+use common::{Polygon, RevealObject, RevealSettings, RevealState};
+use std::sync::Mutex;
 use tauri::AppHandle;
+use tauri::Manager;
 
 #[tauri::command]
-fn get_settings() -> RevealSettings {
-    RevealSettings::default()
+fn get_settings(state: tauri::State<'_, Mutex<RevealState>>) -> RevealSettings {
+    state.lock().unwrap().settings.clone()
 }
 
 #[tauri::command]
@@ -46,6 +48,10 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            app.manage(Mutex::new(RevealState::default()));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             debug_infos,
             get_settings,

@@ -26,8 +26,17 @@ let state = {
   svgPolygons: [],
   svgPolygonsHideIdx: 0,
 
+  settings: 0,
+
 }
 
+async function getSettings() {
+  state.settings = await invoke('get_settings');
+}
+
+async function setSettings() {
+
+}
 
 async function getImage(u) {
   try {
@@ -154,6 +163,11 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Settings
   state.settingsDiv = document.querySelector("#settings");
+
+  // Before setting up everything, load the current settings,
+  // which may have been persisted from a previous execution.
+  await getSettings();
+  debug(`Loaded initial settings: ${JSON.stringify(state.settings, null, "  ")}.`);
 
   document.querySelectorAll(".control").forEach((button) => {
     button.addEventListener('pointerup', (e) => {
