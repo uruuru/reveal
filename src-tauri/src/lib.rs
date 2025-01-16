@@ -1,11 +1,14 @@
 mod common;
+mod image_loading;
 mod plane_covering;
 mod utils;
 
 use base64::engine::{general_purpose, Engine as _};
 use common::{Polygon, RevealObject, RevealSettings, RevealState};
+use image_loading::get_image_paths;
 use std::sync::Mutex;
 use tauri::AppHandle;
+use tauri::Emitter;
 use tauri::Manager;
 
 #[tauri::command]
@@ -32,6 +35,21 @@ fn example() -> RevealObject {
 }
 
 #[tauri::command]
+fn get_image(u: isize, state: tauri::State<'_, Mutex<RevealState>>) -> RevealObject {
+    image_loading::get_image(u, &state)
+        .or_else(|_e| Ok::<_, String>(image_loading::example()))
+        .map(|image_and_meta| RevealObject {
+            image: image_and_meta.base64,
+            image_type: image_and_meta.image_type,
+            covering: String::new(),
+            question: None,
+            answers: Vec::new(),
+            correct_answer: 0,
+        })
+        .unwrap()
+}
+
+#[tauri::command]
 fn load_covering(width: f64, height: f64, n: usize) -> Result<Vec<Polygon>, String> {
     let covering = plane_covering::cover_rectangles(n, width, height);
     Ok(covering)
@@ -50,6 +68,19 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             app.manage(Mutex::new(RevealState::default()));
+
+            // Start image loading
+            let handle = app.handle().to_owned();
+            tauri::async_runtime::spawn(async move {
+                let paths = get_image_paths(&handle);
+                let state = handle.state::<Mutex<RevealState>>();
+                let mut state = state.lock().unwrap();
+                state.images = paths;
+                state.image_index = 0;
+                // TODO send the first reveal object, maybe?
+                handle.emit("images-updated", ()).unwrap();
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -57,6 +88,7 @@ pub fn run() {
             get_settings,
             example,
             load_covering,
+            get_image,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

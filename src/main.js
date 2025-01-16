@@ -1,6 +1,8 @@
 const { invoke } = window.__TAURI__.core;
 const { message } = window.__TAURI__.dialog;
 const { debug, error } = window.__TAURI__.log;
+const { listen } = window.__TAURI__.event;
+
 
 import { printDebug } from './utils.js';
 
@@ -95,11 +97,13 @@ function initializeSettingsListeners(state) {
 
 async function getImage(u) {
   try {
-    const revealObject = await invoke('example'); // invoke('load_image', { u: u });
+    const revealObject = await invoke('get_image', { u: u });
     state.image.setAttribute("hidden", "hidden");
     state.image.src = `data:image/${revealObject.image_type};base64,${revealObject.image}`;
     //state.imageIndex = (state.imageIndex + state.imageCount + u) % state.imageCount;
     //updateProgress();
+
+    // TODO promise fail not handled ...
     return state.image.decode()
   } catch (e) {
     const error_message = `Failed loading image: ${e}`;
@@ -328,6 +332,12 @@ window.addEventListener("DOMContentLoaded", async () => {
   // TODO register only if available?
   registerKeyboard();
   registerTouch();
+
+  listen("images-updated", (event) => {
+    debug("Received update request");
+    getImage(0)
+        .then(() => loadCovering());
+  });
 
   debug("Done.");
 });

@@ -70,3 +70,8 @@ pub struct Point {
 pub struct Polygon {
     pub pnts: Vec<Point>,
 }
+
+pub struct ImageWithMeta {
+    pub base64: String,
+    pub image_type: String,
+}
