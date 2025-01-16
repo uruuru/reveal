@@ -72,18 +72,14 @@ async function loadCovering() {
   const n = 10;
   debug(`Requesting covering for ${w}x${h} with ${n}.`);
 
-  const serialized = await invoke('load_covering', {
+  const polygons = await invoke('load_covering', {
     n: n,
     width: w,
     height: h,
   });
 
-  state.polygons = serialized.split("#").map(tstr => {
-    let ps = tstr.split(";");
-    return ps.flatMap(p => {
-      let xy = p.split(",");
-      return { x: xy[0], y: xy[1] };
-    });
+  state.polygons = polygons.map(polygon => {
+    return polygon.pnts;
   });
 
   // Update the svg accordingly

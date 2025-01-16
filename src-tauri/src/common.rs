@@ -55,13 +55,13 @@ pub struct RevealObject {
     pub correct_answer: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Point {
     pub x: f64,
     pub y: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Polygon {
     pub pnts: Vec<Point>,
 }

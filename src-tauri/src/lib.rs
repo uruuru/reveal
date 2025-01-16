@@ -3,8 +3,7 @@ mod plane_covering;
 mod utils;
 
 use base64::engine::{general_purpose, Engine as _};
-use common::{RevealObject, RevealSettings};
-use itertools::Itertools;
+use common::{Polygon, RevealObject, RevealSettings};
 use tauri::AppHandle;
 
 #[tauri::command]
@@ -31,19 +30,9 @@ fn example() -> RevealObject {
 }
 
 #[tauri::command]
-fn load_covering(width: f64, height: f64, n: usize) -> Result<String, String> {
+fn load_covering(width: f64, height: f64, n: usize) -> Result<Vec<Polygon>, String> {
     let covering = plane_covering::cover_rectangles(n, width, height);
-    let serialized = covering
-        .iter()
-        .map(|polygon| {
-            polygon
-                .pnts
-                .iter()
-                .map(|p| format!("{},{}", p.x, p.y).to_string())
-                .join(";")
-        })
-        .join("#");
-    Ok(serialized)
+    Ok(covering)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
