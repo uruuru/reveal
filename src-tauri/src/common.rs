@@ -29,6 +29,8 @@ pub enum UncoveringStrategy {
 pub struct RevealSettings {
     pub image_source: Option<String>,
     pub covering_type: CoveringType,
+    /// Approximate number of objects to cover the image with.
+    pub covering_object_count: usize,
     pub uncovering_strategy: UncoveringStrategy,
     pub show_control_buttons: bool,
 }
@@ -37,7 +39,8 @@ impl Default for RevealSettings {
     fn default() -> Self {
         RevealSettings {
             image_source: None,
-            covering_type: CoveringType::Triangles,
+            covering_type: CoveringType::Rectangles,
+            covering_object_count: 10,
             uncovering_strategy: UncoveringStrategy::Manual,
             show_control_buttons: true,
         }

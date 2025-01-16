@@ -32,10 +32,65 @@ let state = {
 
 async function getSettings() {
   state.settings = await invoke('get_settings');
+  updateSettingsUi();
+}
+
+function updateSettingsUi() {
+  // To be called when settings changed in the background
+  try {
+    state.inputPath.value = state.settings.image_source;
+    state.inputShowControls.checked = JSON.parse(state.settings.show_control_buttons);
+    state.inputObjectType.value = state.settings.covering_type;
+    state.inputObjectCount.value = state.settings.covering_object_count;
+  } catch (e) {
+    error(`Failed updating settings UI (${e}).`);
+  }
 }
 
 async function setSettings() {
+  // TODO send back to the backend
+}
 
+function initializeSettingsListeners(state) {
+  // Slider
+  state.inputObjectCount.oninput = function (e) {
+    state.settings.covering_object_count = Number(state.inputObjectCount.value || 10);
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    // TODO maybe only reload on done button press?
+    loadCovering();
+  }
+
+  state.inputPath.addEventListener('input', e => {
+    state.inputPath.value = e.target.value;
+
+    // TODO reload on done button press?
+    // state.settingsPathChanged = true;
+  });
+
+  // Set default controls state
+  let updateFun = event => {
+    debug(`State ${state.inputShowControls.checked} ${event}`)
+    const showControls = state.inputShowControls.checked;
+    if (event) {
+      state.settings.show_control_buttons = showControls;
+      event.stopImmediatePropagation();
+    }
+    document.querySelectorAll(".controls-optional").forEach(element => {
+      if (showControls) {
+        element.style.display = 'block';
+      } else {
+        element.style.display = 'none';
+      }
+    });
+  };
+  // TODO still needed?
+  updateFun();
+
+  // 'click' fires after input checkbox state has changed
+  // TODO rather use an onchange?
+  state.inputShowControls.addEventListener("click", updateFun);
 }
 
 async function getImage(u) {
@@ -77,8 +132,7 @@ function uncoverFull() {
 async function loadCovering() {
   const w = state.image.naturalWidth || 1;
   const h = state.image.naturalHeight || 1;
-  //const n = Number(state.preferences.get(Preferences.OBJECT_COUNT) || 10);
-  const n = 10;
+  const n = state.settings.covering_object_count;
   debug(`Requesting covering for ${w}x${h} with ${n}.`);
 
   const polygons = await invoke('load_covering', {
@@ -159,14 +213,23 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // GUI
   state.image = document.querySelector("#image-container");
+  state.slider = document.querySelector("#sliderN");
   state.svg = document.querySelector('#overlay-svg');
+  state.slider = document.querySelector('#sliderN');
+  state.progressSpan = document.querySelector("#progress");
+  state.locationSpan = document.querySelector("#location");
 
   // Settings
   state.settingsDiv = document.querySelector("#settings");
+  state.inputPath = document.querySelector("#input-path");
+  state.inputShowControls = document.querySelector("#input-show-controls");
+  state.inputObjectType = document.querySelector("#input-object-type");
+  state.inputObjectCount = document.querySelector("#input-object-count");
 
   // Before setting up everything, load the current settings,
   // which may have been persisted from a previous execution.
   await getSettings();
+  initializeSettingsListeners(state);
   debug(`Loaded initial settings: ${JSON.stringify(state.settings, null, "  ")}.`);
 
   document.querySelectorAll(".control").forEach((button) => {
