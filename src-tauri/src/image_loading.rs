@@ -13,73 +13,91 @@ pub fn get_image_paths(app: &AppHandle) -> Vec<PathBuf> {
     // TODO get custom path from settings
     let custom_path: Option<PathBuf> = None;
 
-    let path: Result<PathBuf, _> = custom_path
-        .ok_or(())
-        .or_else(|_e| {
-            log::debug!("No image path in settings, trying 'reveal' in user's pictures ...");
+    let path: Result<PathBuf, String> = custom_path
+        .ok_or(String::new())
+        .or_else(|e| {
+            log::debug!("No image path in settings, trying 'reveal' in user's pictures folder ...");
             app.path()
                 .picture_dir()
                 .ok()
                 .map(|path| path.join("reveal"))
                 .filter(|pb| pb.exists())
-                .ok_or("Default path does not exist.")
+                .ok_or_else(|| e + "\nDefault path does not exist.")
         })
-        .or_else(|_e| {
-            log::debug!("Failed. Trying 'reveal' in user's picture folder for android ...");
+        .or_else(|e| {
+            if cfg!(target_os = "android") {
+                log::debug!("Trying 'reveal' in user's pictures folder for android ...");
             let android_pictures = PathBuf::from("/storage/emulated/0/Pictures/reveal");
             if android_pictures.exists() {
                 Ok(android_pictures)
+                } else {
+                    Err(e + "\nAndroid default path does not exist.")
+                }
+            } else if cfg!(target_os = "ios") {
+                log::debug!("Trying 'reveal' in user's documents folder for ios ...");
+                app.path()
+                    .document_dir()
+                    .ok()
+                    .map(|path| path.join("reveal"))
+                    .filter(|pb| pb.exists())
+                    .ok_or_else(|| e + "\niOS default path does not exist.")
             } else {
-                Err(format!("Android default does not exist."))
+                Err(e)
             }
         })
-        // TODO some way to add an ios default?
         .or_else(|e| {
-            log::debug!(
-                "Failed ({}). Asking the user to select a folder ...",
-                e.to_string()
-            );
-            let selection;
+            log::debug!("Asking the user to select a folder ...");
             // Folder picker currently not implemented for mobile, hence we work around it ...
+            // ... by letting the user select an image within the desired folder.
+            // We need to use the cfg attributes here, since 'blocking_pick_folder' is not available for compilation.
             #[cfg(desktop)]
             {
-                selection = app
-                .dialog()
-                .file()
-                .blocking_pick_folder()
-                    .map(|folder_path| folder_path.into_path().unwrap());
+                app.dialog()
+                    .file()
+                    .blocking_pick_folder()
+                    .ok_or(e.clone() + "\nUser canceled.")
+                    .and_then(|folder_path| {
+                        folder_path
+                            .into_path()
+                            .map_err(|inner| e + "\n" + inner.to_string().as_str())
+                    })
             }
-
-            // ... by letting the user select an image within the desired folder.
             #[cfg(not(desktop))]
             {
-                selection = app
-                    .dialog()
+                app.dialog()
                     .file()
                     .blocking_pick_file()
-                    .map(|file_path| file_path.into_path().unwrap())
-                    .and_then(|p| p.parent().map(|p| p.to_path_buf()));
-            }
-
-            match selection {
-                Some(path) => {
-                    log::debug!("User selected {:?}.", path);
-                    Ok(path)
-                }
-                None => Err("User canceled."),
+                    .ok_or(e.clone() + "\nUser canceled.")
+                    .and_then(|file_path| {
+                        file_path
+                            .into_path()
+                            .map_err(|inner| e + "\n" + inner.to_string().as_str())
+                    })
             }
         });
 
-    if path.is_ok() {
-        let paths = collect_image_paths(path.unwrap());
-        return paths;
-    } else {
+    log::debug!("Final path or error: {:?}", path);
+
+    match path {
+        Ok(folder_path) => {
+            app.dialog()
+                .message(format!(
+                    "We'll use this path to load the images: {:?}",
+                    folder_path
+                ))
+                .blocking_show();
+
+            collect_image_paths(folder_path)
+        }
+        Err(message) => {
         app.dialog()
-            .message("Could not find a location with images. Will be showing exemplary images.")
-            .kind(MessageDialogKind::Error)
+            .message(format!("Could not find a location with images. Will be showing exemplary images.\n\n{}", message))
+            .kind(MessageDialogKind::Warning)
             .title("☹")
             .blocking_show();
-        return Vec::new();
+
+            Vec::new()
+        }
     }
 }
 
