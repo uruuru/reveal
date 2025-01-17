@@ -1,35 +1,53 @@
-use std::{fs, path::PathBuf, sync::Mutex};
+use std::path::Path;
+use std::{fs::File, path::PathBuf, str::FromStr, sync::Mutex};
 
 use base64::engine::{general_purpose, Engine as _};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use tauri::image;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use tauri_plugin_fs::FilePath;
+use tauri_plugin_fs::FsExt;
 
 use crate::common::{ImageWithMeta, RevealState};
 
+#[derive(Debug)]
+enum FolderOrFiles {
+    Folder(FilePath),
+    Files(Vec<FilePath>),
+}
 
-pub fn get_image_paths(app: &AppHandle) -> Vec<PathBuf> {
+pub fn get_image_paths(app: &AppHandle) -> Vec<FilePath> {
     // TODO get custom path from settings
-    let custom_path: Option<PathBuf> = None;
+    let custom_path: Option<FolderOrFiles> = None;
 
-    let path: Result<PathBuf, String> = custom_path
+    // We use tauri's FilePath instead of a PathBuf, even for folders,
+    // to allow for consistent use across target_oses.
+    let folder_or_files: Result<FolderOrFiles, String> = custom_path
         .ok_or(String::new())
         .or_else(|e| {
             log::debug!("No image path in settings, trying 'reveal' in user's pictures folder ...");
             app.path()
                 .picture_dir()
-                .ok()
+                .map_err(|tauri_err| e.clone() + "\n" + tauri_err.to_string().as_str())
                 .map(|path| path.join("reveal"))
-                .filter(|pb| pb.exists())
-                .ok_or_else(|| e + "\nDefault path does not exist.")
+                .and_then(|path| {
+                    if path.exists() {
+                        Ok(path)
+                    } else {
+                        Err(e + "\nDefault path does not exist.")
+                    }
+                })
+                .map(FilePath::from)
+                .map(|f| FolderOrFiles::Folder(f))
         })
         .or_else(|e| {
             if cfg!(target_os = "android") {
                 log::debug!("Trying 'reveal' in user's pictures folder for android ...");
-            let android_pictures = PathBuf::from("/storage/emulated/0/Pictures/reveal");
-            if android_pictures.exists() {
-                Ok(android_pictures)
+                let android_pictures = PathBuf::from("/storage/emulated/0/Pictures/reveal");
+                if android_pictures.exists() {
+                    Ok(FolderOrFiles::Folder(FilePath::from(android_pictures)))
                 } else {
                     Err(e + "\nAndroid default path does not exist.")
                 }
@@ -37,10 +55,17 @@ pub fn get_image_paths(app: &AppHandle) -> Vec<PathBuf> {
                 log::debug!("Trying 'reveal' in user's documents folder for ios ...");
                 app.path()
                     .document_dir()
-                    .ok()
+                    .map_err(|tauri_err| e.clone() + "\n" + tauri_err.to_string().as_str())
                     .map(|path| path.join("reveal"))
-                    .filter(|pb| pb.exists())
-                    .ok_or_else(|| e + "\niOS default path does not exist.")
+                    .and_then(|path| {
+                        if path.exists() {
+                            Ok(path)
+                        } else {
+                            Err(e + "\niOS default path does not exist.")
+                        }
+                    })
+                    .map(FilePath::from)
+                    .map(|f| FolderOrFiles::Folder(f))
             } else {
                 Err(e)
             }
@@ -55,56 +80,56 @@ pub fn get_image_paths(app: &AppHandle) -> Vec<PathBuf> {
                 app.dialog()
                     .file()
                     .blocking_pick_folder()
-                    .ok_or(e.clone() + "\nUser canceled.")
-                    .and_then(|folder_path| {
-                        folder_path
-                            .into_path()
-                            .map_err(|inner| e + "\n" + inner.to_string().as_str())
-                    })
+                    .map(|f| FolderOrFiles::Folder(f))
+                    .ok_or(e + "\nUser canceled.")
             }
             #[cfg(not(desktop))]
             {
                 app.dialog()
                     .file()
-                    .blocking_pick_file()
-                    .ok_or(e.clone() + "\nUser canceled.")
-                    .and_then(|file_path| {
-                        file_path
-                            .into_path()
-                            .map_err(|inner| e + "\n" + inner.to_string().as_str())
-                    })
+                    .blocking_pick_files()
+                    .map(|f| FolderOrFiles::Files(f))
+                    .ok_or(e + "\nUser canceled.")
             }
         });
 
-    log::debug!("Final path or error: {:?}", path);
+    log::debug!("Final path(s) or error: {:?}", folder_or_files);
 
-    match path {
-        Ok(folder_path) => {
+    match folder_or_files {
+        Ok(FolderOrFiles::Folder(folder)) => {
             app.dialog()
                 .message(format!(
-                    "We'll use this path to load the images: {:?}",
-                    folder_path
+                    "We'll collect all images within this folder:\n{:?}",
+                    folder
                 ))
                 .blocking_show();
-
-            collect_image_paths(folder_path)
+            collect_image_paths(folder)
+        }
+        Ok(FolderOrFiles::Files(files)) => {
+            app.dialog()
+                .message(format!(
+                    "We'll use the images that you selected:\n{:?}",
+                    files
+                ))
+                .blocking_show();
+            files
         }
         Err(message) => {
-        app.dialog()
-            .message(format!("Could not find a location with images. Will be showing exemplary images.\n\n{}", message))
-            .kind(MessageDialogKind::Warning)
-            .title("☹")
-            .blocking_show();
-
+            app.dialog()
+                .message(format!("Could not find a location with images. Will be showing exemplary images.\n\n{}", message))
+                .kind(MessageDialogKind::Warning)
+                .title("☹")
+                .blocking_show();
             Vec::new()
         }
     }
 }
 
-fn collect_image_paths(folder_path: PathBuf) -> Vec<PathBuf> {
+fn collect_image_paths(folder_path: FilePath) -> Vec<FilePath> {
     // TODO make constant
     let image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
-    let mut image_paths = fs::read_dir(&folder_path)
+    // TODO error handling unwrap
+    let mut image_paths = std::fs::read_dir(&folder_path.as_path().unwrap())
         .ok()
         .unwrap() // TODO handle
         .filter_map(|entry| entry.ok())
@@ -117,7 +142,9 @@ fn collect_image_paths(folder_path: PathBuf) -> Vec<PathBuf> {
                 .map(|ext| image_extensions.contains(&ext.to_lowercase().as_str()))
                 .unwrap_or(false)
         })
-        .filter_map(|e| fs::canonicalize(e.path()).ok())
+        // TODO error handling
+        .filter_map(|e| std::fs::canonicalize(e.path()).ok())
+        .map(FilePath::from)
         .collect::<Vec<_>>();
 
     image_paths.shuffle(&mut thread_rng());
@@ -130,6 +157,7 @@ fn collect_image_paths(folder_path: PathBuf) -> Vec<PathBuf> {
 
 pub fn get_image(
     update_index: isize,
+    app: &AppHandle,
     state: &State<'_, Mutex<RevealState>>,
 ) -> Result<ImageWithMeta, String> {
     let mut state = state.lock().unwrap();
@@ -148,26 +176,31 @@ pub fn get_image(
     state.image_index = new_index;
 
     let image_path = &state.images[state.image_index];
-    let base64_image = fs::read(image_path)
-        .map(|bytes| general_purpose::STANDARD.encode(&bytes))
-        .map_err(|e| format!("Error reading: {}", e));
-    // TODO error handling
 
-    Ok(ImageWithMeta {
-        base64: base64_image.unwrap(),
-        image_type: image_path
-            .extension()
-            .and_then(|s| s.to_str())
-            .map(|image_type| {
-                match image_type {
-                    "jpg" => "jpeg", // IANA only knows jpeg, not jpg
-                    "svg" => "svg+xml",
-                    _ => image_type,
-                }
-            })
-            .unwrap_or("png") // Browsers are somewhat forgiving, try with png
-            .into(),
+    match image_path {
+        FilePath::Path(pb) => std::fs::read(pb),
+        FilePath::Url(_url) => app.fs().read(image_path.clone()),
+    }
+    .map(|bytes| general_purpose::STANDARD.encode(&bytes))
+    .map(|base64| ImageWithMeta {
+        base64: base64,
+        image_type: match image_path {
+            FilePath::Path(pb) => Ok(pb.clone()),
+            FilePath::Url(_url) => image_path.clone().into_path(), // TODO error handling should happen here?!
+        }
+        .map_err(|e| e.to_string())
+        .and_then(|pb| pb.extension().map(|s| s.to_owned()).ok_or("err".into()))
+        .and_then(|s| s.to_str().map(|s| s.to_owned()).ok_or("err2".into()))
+        .map(|image_type| {
+            match image_type.as_str() {
+                "jpg" => "jpeg".into(), // IANA only knows jpeg, not jpg
+                "svg" => "svg+xml".into(),
+                _ => image_type,
+            }
+        })
+        .unwrap_or("png".into()), // Browsers are somewhat forgiving, try with png
     })
+    .map_err(|e| e.to_string())
 }
 
 pub fn example() -> ImageWithMeta {
@@ -179,4 +212,3 @@ pub fn example() -> ImageWithMeta {
         image_type: "png".into(),
     }
 }
-

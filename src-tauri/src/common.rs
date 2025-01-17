@@ -1,10 +1,10 @@
 use serde::Serialize;
-use std::path::PathBuf;
+use tauri_plugin_fs::FilePath;
 use ts_rs::TS;
 
 #[derive(Default)]
 pub struct RevealState {
-    pub images: Vec<PathBuf>,
+    pub images: Vec<FilePath>,
     pub image_index: usize,
     pub settings: RevealSettings,
 }

@@ -35,8 +35,8 @@ fn example() -> RevealObject {
 }
 
 #[tauri::command]
-fn get_image(u: isize, state: tauri::State<'_, Mutex<RevealState>>) -> RevealObject {
-    image_loading::get_image(u, &state)
+fn get_image(u: isize, app_handle: AppHandle, state: tauri::State<'_, Mutex<RevealState>>) -> RevealObject {
+    image_loading::get_image(u, &app_handle, &state)
         .or_else(|_e| Ok::<_, String>(image_loading::example()))
         .map(|image_and_meta| RevealObject {
             image: image_and_meta.base64,
