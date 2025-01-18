@@ -12,8 +12,6 @@
 <body>
   <div id="controls" class="controls">
     <div class="row1">
-      <span id="progress">x / x</span>
-      <button class="control" name="open" data-event="l">📂</button>
       <button class="control" name="settings" data-event="s">⚙</button>
     </div>
     <div class="row2 controls-optional">
@@ -36,6 +34,7 @@
         <label for="input-show-controls">Show controls: </label>
         <input type="checkbox" id="input-show-controls" name="input-show-controls" />
       </div>
+      <button class="control" name="open" data-event="l">📂</button>
       <div>
         <label for="input-path">Input path:</label>
         <input type="text" id="input-path" name="input-path" />
@@ -70,6 +69,7 @@
   </main>
 
   <div class="footer">
+    <span id="progress">x / x</span>
     <span id="location">Current location: </span>
   </div>
 </body>

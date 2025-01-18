@@ -25,7 +25,16 @@ body {
   justify-content: center;
 }
 
-.footer {
+.footer > #location {
+  position: fixed;
+  bottom: 1vh;
+  left: 3vh;
+  width: auto;
+  z-index: 1002;
+  font-size: 10px;
+}
+
+.footer > #progress {
   position: fixed;
   bottom: 1vh;
   right: 3vh;
