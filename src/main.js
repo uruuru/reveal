@@ -100,8 +100,6 @@ async function getImage(u) {
     const revealObject = await invoke('get_image', { u: u });
     state.image.setAttribute("hidden", "hidden");
     state.image.src = `data:image/${revealObject.image_type};base64,${revealObject.image}`;
-    //state.imageIndex = (state.imageIndex + state.imageCount + u) % state.imageCount;
-    //updateProgress();
 
     // TODO promise fail not handled ...
     return state.image.decode()
@@ -202,7 +200,7 @@ async function executeAction(action_identifier) {
       break;
     case Action.settings:
       // Toggle the state
-      if (state.settingsDiv.style.display == 'none') {
+      if (state.settingsDiv.style.display !== 'inline') {
         state.settingsDiv.style.display = 'inline';
       } else {
         state.settingsDiv.style.display = 'none';
@@ -307,6 +305,31 @@ function registerTouch() {
   });
 }
 
+function registerTauriEvents() {
+
+  function tf_listen(event_name, fun) {
+    listen(event_name, (event) => {
+      debug("Handling event: " + JSON.stringify(event));
+      fun(event);
+    });
+  }
+
+  tf_listen("image-paths-updated", (event) => {
+    if (event.payload) {
+      state.locationSpan.textContent = `Images from: ${event.payload}.`;
+    } else {
+      state.locationSpan.textContent = `Images hand-selected.`;
+    }
+    getImage(0)
+      .then(() => loadCovering());
+  }); 
+
+  tf_listen("image-index", (event) => {
+    const indexState = event.payload;
+    state.progressSpan.textContent = `${indexState[0] + 1} / ${indexState[1]}`;
+  });
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
 
   debug("Loading ...");
@@ -339,17 +362,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerKeyboard();
   registerTouch();
 
-  // TODO 
-  listen("image-paths-updated", (event) => {
-    debug("Event " + JSON.stringify(event));
-    if (event.payload) {
-      state.locationSpan.textContent = `Images from: ${event.payload}.`;
-    } else {
-      state.locationSpan.textContent = `Images hand-selected.`;
-    }
-    getImage(0)
-        .then(() => loadCovering());
-  });
+  registerTauriEvents();
+
+  // UI ready, request image paths to be loaded.
+  invoke('get_image_paths', { forceSelection: true });
 
   debug("Done.");
 });

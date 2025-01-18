@@ -95,9 +95,6 @@ pub fn run() {
         .setup(|app| {
             app.manage(Mutex::new(RevealState::default()));
 
-            // Initiate image loading (on a different thread)
-            get_image_paths(false, app.handle().to_owned());
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -3,6 +3,7 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
 use std::{path::PathBuf, sync::Mutex};
+use tauri::Emitter;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_fs::FilePath;
@@ -196,6 +197,9 @@ pub fn get_image(
         new_index
     );
     state.image_index = new_index;
+
+    app.emit("image-index", (new_index, state.images.len()))
+        .unwrap();
 
     let image_path = &state.images[state.image_index];
 
