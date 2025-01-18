@@ -1,10 +1,8 @@
-use std::path::Path;
-use std::{fs::File, path::PathBuf, str::FromStr, sync::Mutex};
-
 use base64::engine::{general_purpose, Engine as _};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
-use tauri::image;
+use rand::Rng;
+use std::{path::PathBuf, sync::Mutex};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_fs::FilePath;
@@ -108,8 +106,8 @@ pub fn get_image_paths(app: &AppHandle) -> Vec<FilePath> {
         Ok(FolderOrFiles::Files(files)) => {
             app.dialog()
                 .message(format!(
-                    "We'll use the images that you selected:\n{:?}",
-                    files
+                    "We'll use the {} images that you selected.",
+                    files.len()
                 ))
                 .blocking_show();
             files
@@ -125,9 +123,9 @@ pub fn get_image_paths(app: &AppHandle) -> Vec<FilePath> {
     }
 }
 
+const IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
+
 fn collect_image_paths(folder_path: FilePath) -> Vec<FilePath> {
-    // TODO make constant
-    let image_extensions = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
     // TODO error handling unwrap
     let mut image_paths = std::fs::read_dir(&folder_path.as_path().unwrap())
         .ok()
@@ -139,7 +137,7 @@ fn collect_image_paths(folder_path: FilePath) -> Vec<FilePath> {
                 .path()
                 .extension()
                 .and_then(|ext| ext.to_str())
-                .map(|ext| image_extensions.contains(&ext.to_lowercase().as_str()))
+                .map(|ext| IMAGE_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
                 .unwrap_or(false)
         })
         // TODO error handling
@@ -203,12 +201,18 @@ pub fn get_image(
     .map_err(|e| e.to_string())
 }
 
+const EXAMPLES: [(&[u8], &str); 3] = [
+    (include_bytes!("../assets/example.png"), "png"),
+    (include_bytes!("../assets/example_2.png"), "png"),
+    (include_bytes!("../assets/example_3.png"), "png"),
+];
+
+/// Returns a randomly selected exemplary image.
 pub fn example() -> ImageWithMeta {
-    // TODO add 2-3, select randomly
-    // TODO make a constant
-    let example = include_bytes!("../assets/example.png");
+    let mut rng = rand::thread_rng();
+    let selected = EXAMPLES[rng.gen_range(0..EXAMPLES.len())];
     ImageWithMeta {
-        base64: general_purpose::STANDARD.encode(example),
-        image_type: "png".into(),
+        base64: general_purpose::STANDARD.encode(selected.0),
+        image_type: selected.1.into(),
     }
 }
