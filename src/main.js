@@ -198,9 +198,15 @@ async function executeAction(action_identifier) {
       await printDebug();
       break;
     case Action.load:
+      await invoke('get_image_paths', { forceSelection: true });
       break;
     case Action.settings:
-      state.settingsDiv.style.display = 'inline';
+      // Toggle the state
+      if (state.settingsDiv.style.display == 'none') {
+        state.settingsDiv.style.display = 'inline';
+      } else {
+        state.settingsDiv.style.display = 'none';
+      }
       break;
     case Action.settings_done:
       state.settingsDiv.style.display = 'none';
@@ -333,8 +339,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerKeyboard();
   registerTouch();
 
-  listen("images-updated", (event) => {
-    debug("Received update request");
+  // TODO 
+  listen("image-paths-updated", (event) => {
+    debug("Event " + JSON.stringify(event));
+    if (event.payload) {
+      state.locationSpan.textContent = `Images from: ${event.payload}.`;
+    } else {
+      state.locationSpan.textContent = `Images hand-selected.`;
+    }
     getImage(0)
         .then(() => loadCovering());
   });
