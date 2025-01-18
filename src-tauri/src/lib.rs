@@ -5,7 +5,6 @@ mod utils;
 
 use base64::engine::{general_purpose, Engine as _};
 use common::{Polygon, RevealObject, RevealSettings, RevealState};
-use image_loading::get_image_paths;
 use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Emitter;
@@ -35,7 +34,11 @@ fn example() -> RevealObject {
 }
 
 #[tauri::command]
-fn get_image(u: isize, app_handle: AppHandle, state: tauri::State<'_, Mutex<RevealState>>) -> RevealObject {
+fn get_image(
+    u: isize,
+    app_handle: AppHandle,
+    state: tauri::State<'_, Mutex<RevealState>>,
+) -> RevealObject {
     image_loading::get_image(u, &app_handle, &state)
         .or_else(|_e| Ok::<_, String>(image_loading::example()))
         .map(|image_and_meta| RevealObject {
@@ -47,6 +50,28 @@ fn get_image(u: isize, app_handle: AppHandle, state: tauri::State<'_, Mutex<Reve
             correct_answer: 0,
         })
         .unwrap()
+}
+
+/// Either detects image paths within a previously used path,
+/// a default path, or a user selected path.
+#[tauri::command]
+fn get_image_paths(force_selection: bool, app: AppHandle) -> String {
+    tauri::async_runtime::spawn(async move {
+        match image_loading::get_image_paths(force_selection, &app) {
+            Ok((container, paths)) => {
+                let state = app.state::<Mutex<RevealState>>();
+                let mut state = state.lock().unwrap();
+                state.images = paths;
+                state.image_index = 0;
+                // TODO send the first reveal object, additionally? Or the state / loaded paths?
+                app.emit("image-paths-updated", container).unwrap();
+            },
+            Err(message) => {
+                app.emit("image-paths-failed", message).unwrap();
+            }
+        }
+    });
+    "ok".to_string()
 }
 
 #[tauri::command]
@@ -70,17 +95,8 @@ pub fn run() {
         .setup(|app| {
             app.manage(Mutex::new(RevealState::default()));
 
-            // Start image loading
-            let handle = app.handle().to_owned();
-            tauri::async_runtime::spawn(async move {
-                let paths = get_image_paths(&handle);
-                let state = handle.state::<Mutex<RevealState>>();
-                let mut state = state.lock().unwrap();
-                state.images = paths;
-                state.image_index = 0;
-                // TODO send the first reveal object, maybe?
-                handle.emit("images-updated", ()).unwrap();
-            });
+            // Initiate image loading (on a different thread)
+            get_image_paths(false, app.handle().to_owned());
 
             Ok(())
         })
@@ -90,6 +106,7 @@ pub fn run() {
             example,
             load_covering,
             get_image,
+            get_image_paths,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

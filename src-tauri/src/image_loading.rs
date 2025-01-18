@@ -16,7 +16,7 @@ enum FolderOrFiles {
     Files(Vec<FilePath>),
 }
 
-pub fn get_image_paths(app: &AppHandle) -> Vec<FilePath> {
+fn get_image_paths_automatic(app: &AppHandle) -> Result<FolderOrFiles, String> {
     // TODO get custom path from settings
     let custom_path: Option<FolderOrFiles> = None;
 
@@ -70,26 +70,49 @@ pub fn get_image_paths(app: &AppHandle) -> Vec<FilePath> {
         })
         .or_else(|e| {
             log::debug!("Asking the user to select a folder ...");
-            // Folder picker currently not implemented for mobile, hence we work around it ...
-            // ... by letting the user select an image within the desired folder.
-            // We need to use the cfg attributes here, since 'blocking_pick_folder' is not available for compilation.
-            #[cfg(desktop)]
-            {
-                app.dialog()
-                    .file()
-                    .blocking_pick_folder()
-                    .map(|f| FolderOrFiles::Folder(f))
-                    .ok_or(e + "\nUser canceled.")
-            }
-            #[cfg(not(desktop))]
-            {
-                app.dialog()
-                    .file()
-                    .blocking_pick_files()
-                    .map(|f| FolderOrFiles::Files(f))
-                    .ok_or(e + "\nUser canceled.")
-            }
+            get_image_paths_user(app).map_err(|inner| e + "\n" + inner.as_str())
         });
+
+    log::debug!("Final path(s) or error: {:?}", folder_or_files);
+
+    folder_or_files
+}
+
+fn get_image_paths_user(app: &AppHandle) -> Result<FolderOrFiles, String> {
+    // Folder picker currently not implemented for mobile, hence we work around it ...
+    // ... by letting the user select an image within the desired folder.
+    // We need to use the cfg attributes here, since 'blocking_pick_folder' is not available for compilation.
+    let selection;
+    #[cfg(desktop)]
+    {
+        selection = app
+            .dialog()
+            .file()
+            .blocking_pick_folder()
+            .map(|f| FolderOrFiles::Folder(f))
+            .ok_or("User canceled.".to_string())
+    }
+    #[cfg(not(desktop))]
+    {
+        selection = app
+            .dialog()
+            .file()
+            .blocking_pick_files()
+            .map(|f| FolderOrFiles::Files(f))
+            .ok_or("User canceled.".to_string())
+    }
+    selection
+}
+
+pub fn get_image_paths(
+    force_user_selection: bool,
+    app: &AppHandle,
+) -> Result<(Option<FilePath>, Vec<FilePath>), String> {
+    let folder_or_files = if force_user_selection {
+        get_image_paths_user(app)
+    } else {
+        get_image_paths_automatic(app)
+    };
 
     log::debug!("Final path(s) or error: {:?}", folder_or_files);
 
@@ -101,7 +124,7 @@ pub fn get_image_paths(app: &AppHandle) -> Vec<FilePath> {
                     folder
                 ))
                 .blocking_show();
-            collect_image_paths(folder)
+            Ok((Some(folder.clone()), collect_image_paths(folder)))
         }
         Ok(FolderOrFiles::Files(files)) => {
             app.dialog()
@@ -110,16 +133,17 @@ pub fn get_image_paths(app: &AppHandle) -> Vec<FilePath> {
                     files.len()
                 ))
                 .blocking_show();
-            files
+            Ok((None, files))
         }
-        Err(message) => {
+        Err(message) if !force_user_selection => {
             app.dialog()
                 .message(format!("Could not find a location with images. Will be showing exemplary images.\n\n{}", message))
                 .kind(MessageDialogKind::Warning)
                 .title("☹")
                 .blocking_show();
-            Vec::new()
+            Err(message)
         }
+        Err(message) => Err(message),
     }
 }
 
