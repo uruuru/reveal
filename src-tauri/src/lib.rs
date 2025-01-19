@@ -9,6 +9,7 @@ use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Emitter;
 use tauri::Manager;
+use tauri_plugin_store::StoreExt;
 
 #[tauri::command]
 fn get_settings(state: tauri::State<'_, Mutex<RevealState>>) -> RevealSettings {
@@ -65,7 +66,7 @@ fn get_image_paths(force_selection: bool, app: AppHandle) -> String {
                 state.image_index = 0;
                 // TODO send the first reveal object, additionally? Or the state / loaded paths?
                 app.emit("image-paths-updated", container).unwrap();
-            },
+            }
             Err(message) => {
                 app.emit("image-paths-failed", message).unwrap();
             }
@@ -83,6 +84,7 @@ fn load_covering(width: f64, height: f64, n: usize) -> Result<Vec<Polygon>, Stri
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
@@ -93,6 +95,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            app.store("settings.json")?;
             app.manage(Mutex::new(RevealState::default()));
 
             Ok(())
