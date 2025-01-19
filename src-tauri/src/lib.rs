@@ -60,6 +60,10 @@ fn get_image_paths(force_selection: bool, app: AppHandle) -> String {
     tauri::async_runtime::spawn(async move {
         match image_loading::get_image_paths(force_selection, &app) {
             Ok((container, paths)) => {
+
+                log::debug!("Found {} images.", paths.len());
+                log::trace!("Final set of image paths: {:?}.", paths);
+
                 let state = app.state::<Mutex<RevealState>>();
                 let mut state = state.lock().unwrap();
                 state.images = paths;

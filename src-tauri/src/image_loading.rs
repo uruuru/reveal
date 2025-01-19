@@ -27,6 +27,14 @@ fn get_image_paths_automatic(app: &AppHandle) -> Result<FolderOrFiles, String> {
         .get("loaded_from_folder")
         .ok_or(String::from("No path in settings.json."))
         .and_then(|ps| serde_json::from_value::<PathBuf>(ps).map_err(|e| e.to_string()))
+        .and_then(|pb| {
+            // The user may have deleted the folder since last execution.
+            if pb.is_dir() && pb.exists() {
+                Ok(pb)
+            } else {
+                Err("Folder from settings does not exist (anymore).".into())
+            }
+        })
         .map(|pb| FolderOrFiles::Folder(FilePath::from(pb)));
 
     // We use tauri's FilePath instead of a PathBuf, even for folders,
@@ -134,16 +142,37 @@ pub fn get_image_paths(
             let store = app.get_store("settings.json").unwrap();
             store.set("loaded_from_folder", json!(folder.as_path().unwrap()));
 
-            Ok((Some(folder.clone()), collect_image_paths(folder)))
+            let filtered_and_shuffled_paths = match folder.clone() {
+                FilePath::Path(pb) => Some(pb)
+                    .map(load_from_folder)
+                    .map(|t| filter_to_supported_images(&t))
+                    .map(|mut v| {
+                        shuffle(&mut v);
+                        v
+                    })
+                    .unwrap(),
+                FilePath::Url(_url) => unimplemented!(), // TODO
+            };
+
+            Ok((Some(folder.clone()), filtered_and_shuffled_paths))
         }
         Ok(FolderOrFiles::Files(files)) => {
             app.dialog()
                 .message(format!(
-                    "We'll use the {} images that you selected.",
+                    "We'll use the supported images of the {} you selected.",
                     files.len()
                 ))
                 .blocking_show();
-            Ok((None, files))
+
+            let filtered_and_shuffled_paths = Some(files)
+                .map(|t| filter_to_supported_images(&t))
+                .map(|mut v| {
+                    shuffle(&mut v);
+                    v
+                })
+                .unwrap();
+
+            Ok((None, filtered_and_shuffled_paths))
         }
         Err(message) if !force_user_selection => {
             app.dialog()
@@ -157,34 +186,51 @@ pub fn get_image_paths(
     }
 }
 
+fn load_from_folder(folder_path: PathBuf) -> Vec<FilePath> {
+    assert!(folder_path.is_dir() && folder_path.exists());
+
+    match std::fs::read_dir(&folder_path) {
+        Ok(entries) => entries
+            .filter_map(|entry| entry.ok())
+            .filter(|entry| entry.path().is_file())
+            .filter_map(|entry| std::fs::canonicalize(entry.path()).ok())
+            .map(FilePath::from)
+            .collect(),
+        Err(e) => {
+            log::error!("Couldn't load from path '{:?}': {:?}", folder_path, e);
+            Vec::new()
+        }
+    }
+}
+
 const IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
 
-fn collect_image_paths(folder_path: FilePath) -> Vec<FilePath> {
-    // TODO error handling unwrap
-    let mut image_paths = std::fs::read_dir(&folder_path.as_path().unwrap())
-        .ok()
-        .unwrap() // TODO handle
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().is_file())
-        .filter(|entry| {
-            entry
-                .path()
+fn filter_to_supported_images(file_paths: &[FilePath]) -> Vec<FilePath> {
+    file_paths
+        .iter()
+        .filter(|fp| match fp {
+            FilePath::Path(path_buf) => path_buf.is_file() && path_buf.exists(),
+            FilePath::Url(_url) => true, // TODO ...
+        })
+        .filter(|fp| match fp {
+            FilePath::Path(path_buf) => path_buf
                 .extension()
                 .and_then(|ext| ext.to_str())
                 .map(|ext| IMAGE_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
-                .unwrap_or(false)
+                .unwrap_or(false),
+            FilePath::Url(url) => url
+                .as_str()
+                .rfind('.')
+                .map(|pos| url.as_str()[pos + 1..].into())
+                .map(|ext| IMAGE_EXTENSIONS.contains(&ext))
+                .unwrap_or(false),
         })
-        // TODO error handling
-        .filter_map(|e| std::fs::canonicalize(e.path()).ok())
-        .map(FilePath::from)
-        .collect::<Vec<_>>();
+        .map(ToOwned::to_owned)
+        .collect()
+}
 
+fn shuffle(image_paths: &mut [FilePath]) {
     image_paths.shuffle(&mut thread_rng());
-
-    log::debug!("Found {} images.", image_paths.len());
-    log::debug!("Final set of image paths: {:?}.", image_paths);
-
-    image_paths
 }
 
 pub fn get_image(
