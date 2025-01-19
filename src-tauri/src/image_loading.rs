@@ -2,12 +2,14 @@ use base64::engine::{general_purpose, Engine as _};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
+use serde_json::json;
 use std::{path::PathBuf, sync::Mutex};
 use tauri::Emitter;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_fs::FilePath;
 use tauri_plugin_fs::FsExt;
+use tauri_plugin_store::StoreExt;
 
 use crate::common::{ImageWithMeta, RevealState};
 
@@ -18,13 +20,18 @@ enum FolderOrFiles {
 }
 
 fn get_image_paths_automatic(app: &AppHandle) -> Result<FolderOrFiles, String> {
-    // TODO get custom path from settings
-    let custom_path: Option<FolderOrFiles> = None;
+    // Look for previous path in settings
+    let custom_path = app
+        .get_store("settings.json")
+        .unwrap()
+        .get("loaded_from_folder")
+        .ok_or(String::from("No path in settings.json."))
+        .and_then(|ps| serde_json::from_value::<PathBuf>(ps).map_err(|e| e.to_string()))
+        .map(|pb| FolderOrFiles::Folder(FilePath::from(pb)));
 
     // We use tauri's FilePath instead of a PathBuf, even for folders,
     // to allow for consistent use across target_oses.
     let folder_or_files: Result<FolderOrFiles, String> = custom_path
-        .ok_or(String::new())
         .or_else(|e| {
             log::debug!("No image path in settings, trying 'reveal' in user's pictures folder ...");
             app.path()
@@ -73,8 +80,6 @@ fn get_image_paths_automatic(app: &AppHandle) -> Result<FolderOrFiles, String> {
             log::debug!("Asking the user to select a folder ...");
             get_image_paths_user(app).map_err(|inner| e + "\n" + inner.as_str())
         });
-
-    log::debug!("Final path(s) or error: {:?}", folder_or_files);
 
     folder_or_files
 }
@@ -125,6 +130,10 @@ pub fn get_image_paths(
                     folder
                 ))
                 .blocking_show();
+
+            let store = app.get_store("settings.json").unwrap();
+            store.set("loaded_from_folder", json!(folder.as_path().unwrap()));
+
             Ok((Some(folder.clone()), collect_image_paths(folder)))
         }
         Ok(FolderOrFiles::Files(files)) => {
