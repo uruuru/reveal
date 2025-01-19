@@ -2,9 +2,9 @@ const { invoke } = window.__TAURI__.core;
 const { message } = window.__TAURI__.dialog;
 const { debug, error } = window.__TAURI__.log;
 const { listen } = window.__TAURI__.event;
+const { load } = window.__TAURI__.store;
 
-
-import { printDebug } from './utils.js';
+import { isMobile, printDebug } from './utils.js';
 
 const Action = Object.freeze({
   load: 'l',
@@ -32,31 +32,54 @@ let state = {
 
 }
 
+async function loadSettings() {
+  await state.store.get("show_controls").then((v) => {
+    if (v !== undefined) {
+      state.inputShowControls.checked = JSON.parse(v);
+    } else {
+      state.inputShowControls.checked = !isMobile();
+    }
+  });
+
+  // TODO defaults
+  await state.store.get("object_type").then((v) => {
+    if (v !== undefined) {
+      state.inputObjectType.value = v;
+    }
+  });
+  await state.store.get("object_count").then((v) => {
+    if (v !== undefined) {
+      state.inputObjectCount.value = v;
+    }
+  });
+}
+
+function persistSettings() {
+  state.store.set("show_controls", state.inputShowControls.checked);
+  state.store.set("object_type", state.inputObjectType.value);
+  state.store.set("object_count", state.inputObjectCount.value);
+}
+
 async function getSettings() {
-  state.settings = await invoke('get_settings');
-  updateSettingsUi();
+  state.store = await load('settings.json', { autoSave: true });
+
+  await loadSettings();
+
+  debug(`Loaded initial settings: ${JSON.stringify(state.settings, null, "  ")}.`);
+
+  persistSettings();
+
+  // TODO ability to clear the default path ...
 }
 
-function updateSettingsUi() {
-  // To be called when settings changed in the background
-  try {
-    state.inputPath.value = state.settings.image_source;
-    state.inputShowControls.checked = JSON.parse(state.settings.show_control_buttons);
-    state.inputObjectType.value = state.settings.covering_type;
-    state.inputObjectCount.value = state.settings.covering_object_count;
-  } catch (e) {
-    error(`Failed updating settings UI (${e}).`);
-  }
-}
-
-async function setSettings() {
-  // TODO send back to the backend
-}
 
 function initializeSettingsListeners(state) {
+
+  // TODO create inner function to be used that stores settings after execution below
+
   // Slider
   state.inputObjectCount.oninput = function (e) {
-    state.settings.covering_object_count = Number(state.inputObjectCount.value || 10);
+    persistSettings();
     e.preventDefault();
     e.stopImmediatePropagation();
 
@@ -64,19 +87,11 @@ function initializeSettingsListeners(state) {
     loadCovering();
   }
 
-  state.inputPath.addEventListener('input', e => {
-    state.inputPath.value = e.target.value;
-
-    // TODO reload on done button press?
-    // state.settingsPathChanged = true;
-  });
-
   // Set default controls state
   let updateFun = event => {
-    debug(`State ${state.inputShowControls.checked} ${event}`)
     const showControls = state.inputShowControls.checked;
     if (event) {
-      state.settings.show_control_buttons = showControls;
+      persistSettings();
       event.stopImmediatePropagation();
     }
     document.querySelectorAll(".controls-optional").forEach(element => {
@@ -86,8 +101,9 @@ function initializeSettingsListeners(state) {
         element.style.display = 'none';
       }
     });
+    //TODO ... event? based on .settings?!
   };
-  // TODO still needed?
+  // TODO need this to initialize the visibility state of the controls
   updateFun();
 
   // 'click' fires after input checkbox state has changed
@@ -134,7 +150,7 @@ function uncoverFull() {
 async function loadCovering() {
   const w = state.image.naturalWidth || 1;
   const h = state.image.naturalHeight || 1;
-  const n = state.settings.covering_object_count;
+  const n = Number(state.inputObjectCount.value);
   debug(`Requesting covering for ${w}x${h} with ${n}.`);
 
   const polygons = await invoke('load_covering', {
@@ -322,7 +338,7 @@ function registerTauriEvents() {
     }
     getImage(0)
       .then(() => loadCovering());
-  }); 
+  });
 
   tf_listen("image-index", (event) => {
     const indexState = event.payload;
@@ -353,7 +369,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   // which may have been persisted from a previous execution.
   await getSettings();
   initializeSettingsListeners(state);
-  debug(`Loaded initial settings: ${JSON.stringify(state.settings, null, "  ")}.`);
 
   // Initialize interactivity
   registerControlButtons();
