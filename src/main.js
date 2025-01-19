@@ -365,7 +365,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerTauriEvents();
 
   // UI ready, request image paths to be loaded.
-  invoke('get_image_paths', { forceSelection: true });
+  invoke('get_image_paths', { forceSelection: false });
 
   debug("Done.");
 });
