@@ -22,19 +22,6 @@ fn debug_infos(app_handle: AppHandle) -> String {
 }
 
 #[tauri::command]
-fn example() -> RevealObject {
-    let example = include_bytes!("../assets/example.png");
-    RevealObject {
-        image: general_purpose::STANDARD.encode(example),
-        image_type: "png".into(),
-        covering: String::new(),
-        question: None,
-        answers: Vec::new(),
-        correct_answer: 0,
-    }
-}
-
-#[tauri::command]
 fn get_image(
     u: isize,
     app_handle: AppHandle,
@@ -107,7 +94,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             debug_infos,
             get_settings,
-            example,
             load_covering,
             get_image,
             get_image_paths,
