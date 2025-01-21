@@ -284,11 +284,12 @@ pub fn get_image(
     .map_err(|e| e.to_string())
 }
 
-const EXAMPLES: [(&[u8], &str); 4] = [
+const EXAMPLES: [(&[u8], &str); 5] = [
     (include_bytes!("../assets/examples/example_1.png"), "png"),
     (include_bytes!("../assets/examples/example_2.jpg"), "jpg"),
     (include_bytes!("../assets/examples/example_3.webp"), "webp"),
     (include_bytes!("../assets/examples/example_4.gif"), "gif"),
+    (include_bytes!("../assets/examples/example_5.svg"), "svg"),
 ];
 
 /// Returns a randomly selected exemplary image.
