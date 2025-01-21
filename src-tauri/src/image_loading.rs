@@ -1,4 +1,6 @@
 use base64::engine::{general_purpose, Engine as _};
+use chrono::NaiveDateTime;
+use exif::{In, Reader, Tag};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
@@ -262,9 +264,17 @@ pub fn get_image(
         FilePath::Path(pb) => std::fs::read(pb),
         FilePath::Url(_url) => app.fs().read(image_path.clone()),
     }
-    .map(|bytes| general_purpose::STANDARD.encode(&bytes))
-    .map(|base64| ImageWithMeta {
+    .map(|bytes| (general_purpose::STANDARD.encode(&bytes), read_exif(&bytes)))
+    .map(|(base64, exif)| ImageWithMeta {
         base64: base64,
+        date_taken: match exif {
+            // TODO only do this if needed
+            Ok(date_taken) => Some(date_taken),
+            Err(msg) => {
+                log::debug!("Could not load exif: {}", msg);
+                None
+            }
+        },
         image_type: match image_path {
             FilePath::Path(pb) => Ok(pb.clone()),
             FilePath::Url(_url) => image_path.clone().into_path(), // TODO error handling should happen here?!
@@ -299,5 +309,23 @@ pub fn example() -> ImageWithMeta {
     ImageWithMeta {
         base64: general_purpose::STANDARD.encode(selected.0),
         image_type: selected.1.into(),
+        date_taken: None,
     }
+}
+
+fn read_exif(bytes: &[u8]) -> Result<NaiveDateTime, String> {
+    let mut bufreader = std::io::Cursor::new(bytes);
+    Reader::new()
+        .read_from_container(&mut bufreader)
+        .map_err(|e| e.to_string())
+        .and_then(|data| {
+            data.get_field(Tag::DateTimeOriginal, In::PRIMARY)
+                .ok_or("DateTimeOriginal not included".into())
+                .map(|field| field.display_value().to_string())
+        })
+        .and_then(|s| {
+            log::debug!("Exif str: {}", s);
+            NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
+                .map_err(|e| format!("{} ({})", e.to_string(), s))
+        })
 }

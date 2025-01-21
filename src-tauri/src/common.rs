@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use serde::Serialize;
 use tauri_plugin_fs::FilePath;
 use ts_rs::TS;
@@ -74,4 +75,5 @@ pub struct Polygon {
 pub struct ImageWithMeta {
     pub base64: String,
     pub image_type: String,
+    pub date_taken: Option<NaiveDateTime>,
 }
