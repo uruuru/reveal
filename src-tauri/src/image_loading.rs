@@ -33,7 +33,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
         .and_then(|ps| serde_json::from_value::<PathBuf>(ps).map_err(|e| e.to_string()))
         .and_then(|pb| {
             // The user may have deleted the folder since last execution.
-            if pb.is_dir() && pb.exists() {
+            if pb.exists() && pb.is_dir() {
                 Ok(pb)
             } else {
                 Err("Folder from settings does not exist (anymore).".into())
@@ -45,7 +45,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
     // to allow for consistent use across target_oses.
     let folder_or_files: Result<FolderOrFiles, String> = custom_path
         .or_else(|e| {
-            log::debug!("No image path in settings, trying 'reveal' in user's pictures folder ...");
+            log::debug!("Trying 'reveal' in user's pictures folder ...");
             app.path()
                 .picture_dir()
                 .map_err(|tauri_err| e.clone() + "\n" + tauri_err.to_string().as_str())
@@ -84,6 +84,24 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                     })
                     .map(FilePath::from)
                     .map(|f| FolderOrFiles::Folder(f))
+            } else if cfg!(desktop) {
+                log::debug!("Trying 'reveal_images' next to the executable ...");
+                std::env::current_exe()
+                    .map_err(|inner| e.clone() + "\n" + inner.to_string().as_str())
+                    .and_then(|exe_path| {
+                        exe_path
+                            .parent()
+                            .map(ToOwned::to_owned)
+                            .ok_or("Unable to access exe's parent folder.".into())
+                    })
+                    .map(|exe_dir| exe_dir.join("reveal_images"))
+                    .and_then(|reveal_dir| {
+                        if reveal_dir.exists() && reveal_dir.is_dir() {
+                            Ok(FolderOrFiles::Folder(FilePath::from(reveal_dir)))
+                        } else {
+                            Err("No 'reveal_images' folder next to the executable.".into())
+                        }
+                    })
             } else {
                 Err(e)
             }
@@ -161,8 +179,8 @@ pub fn get_image_paths(
             if verbose {
                 app.dialog()
                     .message(format!(
-                        "We'll collect all images within this folder:\n{:?}",
-                        folder
+                        "We'll collect all images within this folder:\n{}",
+                        folder.to_string()
                     ))
                     .blocking_show();
             }
