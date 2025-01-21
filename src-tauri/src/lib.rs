@@ -5,6 +5,8 @@ mod utils;
 
 use base64::engine::{general_purpose, Engine as _};
 use common::{Polygon, RevealObject, RevealSettings, RevealState};
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Emitter;
@@ -68,7 +70,8 @@ fn get_image_paths(force_selection: bool, app: AppHandle) -> String {
 
 #[tauri::command]
 fn load_covering(width: f64, height: f64, n: usize) -> Result<Vec<Polygon>, String> {
-    let covering = plane_covering::cover_rectangles(n, width, height);
+    let mut covering = plane_covering::cover_rectangles(n, width, height);
+    covering.shuffle(&mut thread_rng());
     Ok(covering)
 }
 
