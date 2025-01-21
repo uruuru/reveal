@@ -353,6 +353,15 @@ function registerTauriEvents() {
       .then(() => loadCovering());
   });
 
+  tf_listen("image-paths-failed", (_) => {
+    state.locationSpan.textContent = 'Exemplary images.';
+    state.progressSpan.textContent = '';
+    // Since no images have been loaded, this will return randomly picked 
+    // exemplary images.
+    getImage(0)
+      .then(() => loadCovering());
+  });
+
   tf_listen("image-index", (event) => {
     const indexState = event.payload;
     state.progressSpan.textContent = `${indexState[0] + 1} / ${indexState[1]}`;
