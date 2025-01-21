@@ -286,6 +286,7 @@ function registerTouch() {
   //   left:  previous image
   let touchStart = { x: 0, y: 0, };
   let touchEnd = { x: 0, y: 0, };
+  let touchMulti = false;
 
   function reactToSwipe() {
     // TODO make the minimal swipe distance configurable in settings
@@ -312,20 +313,24 @@ function registerTouch() {
     }
   }
 
-  // TODO there's some undesired behavior when zooming,
-  // i.e., the user "pinches" into the image to look at some detail.
-  // Maybe we can avoid this by checking for the number of touch points?
-  //   (e.touches.length)
-  // Note that the user may start touching with one finger only and 
-  // adding the other one only later.
+  // Take care to avoid undesired behavior when zooming, 
+  // i.e., when the user "pinches" into the image to look at some detail.
+  // We mitigate this by not accepting a swipe if at any point during the 
+  // touch sequence more than one touch point was detected.
   document.addEventListener('touchstart', e => {
     touchStart.x = e.changedTouches[0].screenX;
     touchStart.y = e.changedTouches[0].screenY;
+    touchMulti = e.touches.length > 1;
+  });
+  document.addEventListener('touchmove', e => {
+    touchMulti |= e.touches.length > 1;
   });
   document.addEventListener('touchend', e => {
-    touchEnd.x = e.changedTouches[0].screenX;
-    touchEnd.y = e.changedTouches[0].screenY;
-    reactToSwipe()
+    if (!touchMulti) {
+      touchEnd.x = e.changedTouches[0].screenX;
+      touchEnd.y = e.changedTouches[0].screenY;
+      reactToSwipe();
+    }
   });
 }
 

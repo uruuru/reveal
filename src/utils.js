@@ -11,6 +11,7 @@ async function printDebug() {
             `isMobile: ${isMobile()}`,
             `Pointer events supported: ${window.PointerEvent ? 'true' : 'false'}`,
             `Touch events supported: ${window.TouchEvent ? 'true' : 'false'}`,
+            `Gesture events supported: ${window.GestureEvent ? 'true' : 'false'}`,
             `Max touch points: ${navigator.maxTouchPoints}`,
             `User agent: ${navigator.userAgent}`
         ].join('\n');
