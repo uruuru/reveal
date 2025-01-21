@@ -290,9 +290,12 @@ function registerTouch() {
     if (absX > absY && absX > threshold) {
       // horizontal
       if (touchEnd.x < touchStart.x) {
-        executeAction(Action.previous); // left
+        // Use "natural scrolling", 
+        // i.e. if the user "moves" the screen to the left, 
+        // go to the next image.
+        executeAction(Action.next); // left
       } else {
-        executeAction(Action.next); // right
+        executeAction(Action.previous); // right
       }
     } else if (absY > threshold) {
       // vertical
