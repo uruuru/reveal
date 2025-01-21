@@ -21,7 +21,9 @@ enum FolderOrFiles {
     Files(Vec<FilePath>),
 }
 
-fn get_image_paths_automatic(app: &AppHandle) -> Result<FolderOrFiles, String> {
+const SUPPORTED_IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
+
+fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles, String> {
     // Look for previous path in settings
     let custom_path = app
         .get_store("settings.json")
@@ -88,19 +90,29 @@ fn get_image_paths_automatic(app: &AppHandle) -> Result<FolderOrFiles, String> {
         })
         .or_else(|e| {
             log::debug!("Asking the user to select a folder ...");
-            get_image_paths_user(app).map_err(|inner| e + "\n" + inner.as_str())
+            get_image_paths_user(app, verbose).map_err(|inner| e + "\n" + inner.as_str())
         });
 
     folder_or_files
 }
 
-fn get_image_paths_user(app: &AppHandle) -> Result<FolderOrFiles, String> {
+fn get_image_paths_user(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles, String> {
     // Folder picker currently not implemented for mobile, hence we work around it ...
     // ... by letting the user select an image within the desired folder.
     // We need to use the cfg attributes here, since 'blocking_pick_folder' is not available for compilation.
     let selection;
     #[cfg(desktop)]
     {
+        if verbose {
+            app.dialog()
+                .message(format!(
+                    "Please select a folder \
+                    from which supported images will be loaded \
+                    in the next dialog."
+                ))
+                .title("Select a folder.")
+                .blocking_show();
+        }
         selection = app
             .dialog()
             .file()
@@ -110,9 +122,20 @@ fn get_image_paths_user(app: &AppHandle) -> Result<FolderOrFiles, String> {
     }
     #[cfg(not(desktop))]
     {
+        if verbose {
+            app.dialog()
+                .message(format!(
+                    "Please select all images \
+                    that shall be loaded \
+                    in the next dialog."
+                ))
+                .title("Select images.")
+                .blocking_show();
+        }
         selection = app
             .dialog()
             .file()
+            .add_filter("images", &SUPPORTED_IMAGE_EXTENSIONS)
             .blocking_pick_files()
             .map(|f| FolderOrFiles::Files(f))
             .ok_or("User canceled.".to_string())
@@ -123,24 +146,26 @@ fn get_image_paths_user(app: &AppHandle) -> Result<FolderOrFiles, String> {
 pub fn get_image_paths(
     force_user_selection: bool,
     app: &AppHandle,
+    verbose: bool,
 ) -> Result<(Option<FilePath>, Vec<FilePath>), String> {
     let folder_or_files = if force_user_selection {
-        get_image_paths_user(app)
+        get_image_paths_user(app, verbose)
     } else {
-        get_image_paths_automatic(app)
+        get_image_paths_automatic(app, verbose)
     };
 
     log::debug!("Final path(s) or error: {:?}", folder_or_files);
 
     match folder_or_files {
         Ok(FolderOrFiles::Folder(folder)) => {
-            app.dialog()
-                .message(format!(
-                    "We'll collect all images within this folder:\n{:?}",
-                    folder
-                ))
-                .blocking_show();
-
+            if verbose {
+                app.dialog()
+                    .message(format!(
+                        "We'll collect all images within this folder:\n{:?}",
+                        folder
+                    ))
+                    .blocking_show();
+            }
             let store = app.get_store("settings.json").unwrap();
             store.set("loaded_from_folder", json!(folder.as_path().unwrap()));
 
@@ -159,12 +184,14 @@ pub fn get_image_paths(
             Ok((Some(folder.clone()), filtered_and_shuffled_paths))
         }
         Ok(FolderOrFiles::Files(files)) => {
-            app.dialog()
-                .message(format!(
-                    "We'll use the supported images of the {} you selected.",
-                    files.len()
-                ))
-                .blocking_show();
+            if verbose {
+                app.dialog()
+                    .message(format!(
+                        "We'll use the supported images of the {} you selected.",
+                        files.len()
+                    ))
+                    .blocking_show();
+            }
 
             let filtered_and_shuffled_paths = Some(files)
                 .map(|t| filter_to_supported_images(&t))
@@ -205,8 +232,6 @@ fn load_from_folder(folder_path: PathBuf) -> Vec<FilePath> {
     }
 }
 
-const IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
-
 fn filter_to_supported_images(file_paths: &[FilePath]) -> Vec<FilePath> {
     file_paths
         .iter()
@@ -218,13 +243,13 @@ fn filter_to_supported_images(file_paths: &[FilePath]) -> Vec<FilePath> {
             FilePath::Path(path_buf) => path_buf
                 .extension()
                 .and_then(|ext| ext.to_str())
-                .map(|ext| IMAGE_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
+                .map(|ext| SUPPORTED_IMAGE_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
                 .unwrap_or(false),
             FilePath::Url(url) => url
                 .as_str()
                 .rfind('.')
                 .map(|pos| url.as_str()[pos + 1..].into())
-                .map(|ext| IMAGE_EXTENSIONS.contains(&ext))
+                .map(|ext| SUPPORTED_IMAGE_EXTENSIONS.contains(&ext))
                 .unwrap_or(false),
         })
         .map(ToOwned::to_owned)

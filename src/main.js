@@ -30,6 +30,7 @@ let state = {
 
   settings: 0,
 
+  verbose: true,
 }
 
 async function loadSettings() {
@@ -51,6 +52,10 @@ async function loadSettings() {
     if (v !== undefined) {
       state.inputObjectCount.value = v;
     }
+  });
+
+  await state.store.get("verbose").then((v) => {
+    state.verbose = v || true;
   });
 }
 
@@ -212,7 +217,7 @@ async function executeAction(action_identifier) {
       await printDebug();
       break;
     case Action.load:
-      await invoke('get_image_paths', { forceSelection: true });
+      await invoke('get_image_paths', { forceSelection: true, verbose: state.verbose });
       break;
     case Action.settings:
       // Toggle the state
@@ -382,7 +387,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerTauriEvents();
 
   // UI ready, request image paths to be loaded.
-  invoke('get_image_paths', { forceSelection: false });
+  invoke('get_image_paths', { forceSelection: false, verbose: state.verbose });
 
   debug("Done.");
 });

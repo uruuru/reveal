@@ -3,7 +3,6 @@ mod image_loading;
 mod plane_covering;
 mod utils;
 
-use base64::engine::{general_purpose, Engine as _};
 use common::{Polygon, RevealObject, RevealSettings, RevealState};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -45,11 +44,10 @@ fn get_image(
 /// Either detects image paths within a previously used path,
 /// a default path, or a user selected path.
 #[tauri::command]
-fn get_image_paths(force_selection: bool, app: AppHandle) -> String {
+fn get_image_paths(force_selection: bool, verbose: bool, app: AppHandle) -> String {
     tauri::async_runtime::spawn(async move {
-        match image_loading::get_image_paths(force_selection, &app) {
+        match image_loading::get_image_paths(force_selection, &app, verbose) {
             Ok((container, paths)) => {
-
                 log::debug!("Found {} images.", paths.len());
                 log::trace!("Final set of image paths: {:?}.", paths);
 
