@@ -363,7 +363,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Settings
   state.settingsDiv = document.querySelector("#settings");
-  state.inputPath = document.querySelector("#input-path");
   state.inputShowControls = document.querySelector("#input-show-controls");
   state.inputObjectType = document.querySelector("#input-object-type");
   state.inputObjectCount = document.querySelector("#input-object-count");
