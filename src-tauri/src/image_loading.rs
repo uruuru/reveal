@@ -21,7 +21,10 @@ enum FolderOrFiles {
     Files(Vec<FilePath>),
 }
 
-const SUPPORTED_IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
+#[cfg(desktop)]
+const SUPPORTED_IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "webp", "gif", "svg"];
+#[cfg(not(desktop))]
+const SUPPORTED_IMAGE_EXTENSIONS: [&str; 4] = ["jpg", "jpeg", "png", "webp"];
 
 fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles, String> {
     // Look for previous path in settings
@@ -153,7 +156,9 @@ fn get_image_paths_user(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles,
         selection = app
             .dialog()
             .file()
-            .add_filter("images", &SUPPORTED_IMAGE_EXTENSIONS)
+            // TODO revisit in the future, currently iOS does not allow to pick anything
+            // and android delegates to another app for the selection process.
+            //.add_filter("images", &SUPPORTED_IMAGE_EXTENSIONS)
             .blocking_pick_files()
             .map(|f| FolderOrFiles::Files(f))
             .ok_or("User canceled.".to_string())
