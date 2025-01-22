@@ -29,8 +29,6 @@ let state = {
   svgPolygonsHideIdx: 0,
 
   settings: 0,
-
-  verbose: true,
 }
 
 async function loadSettings() {
@@ -55,12 +53,17 @@ async function loadSettings() {
   });
 
   await state.store.get("verbose").then((v) => {
-    state.verbose = v || true;
+    if (v !== undefined) {
+      state.inputVerbose.checked = JSON.parse(v);
+    } else {
+      state.inputVerbose.checked = true;
+    }
   });
 }
 
 function persistSettings() {
   state.store.set("show_controls", state.inputShowControls.checked);
+  state.store.set("verbose", state.inputVerbose.checked); 
   state.store.set("object_type", state.inputObjectType.value);
   state.store.set("object_count", state.inputObjectCount.value);
 }
@@ -217,7 +220,7 @@ async function executeAction(action_identifier) {
       await printDebug();
       break;
     case Action.load:
-      await invoke('get_image_paths', { forceSelection: true, verbose: state.verbose });
+      await invoke('get_image_paths', { forceSelection: true, verbose: state.inputVerbose.checked });
       break;
     case Action.settings:
       // Toggle the state
@@ -270,8 +273,8 @@ function registerTouch() {
   // Some care has to be taken to not react to pressing some of the other UI elements,
   // be it regular control buttons or settings.
   document.addEventListener('pointerup', (e) => {
-    // TODO ignore every action on the settings pane
-    if (e.target === state.inputObjectCount || e.target == state.inputShowControls) {
+    // Ignore interaction with the settings pane
+    if (e.target.closest(".settings") !== null) {
       return;
     }
     executeAction(Action.uncover);
@@ -391,6 +394,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Settings
   state.settingsDiv = document.querySelector("#settings");
   state.inputShowControls = document.querySelector("#input-show-controls");
+  state.inputVerbose = document.querySelector("#input-verbose");
   state.inputObjectType = document.querySelector("#input-object-type");
   state.inputObjectCount = document.querySelector("#input-object-count");
 
@@ -409,7 +413,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerTauriEvents();
 
   // UI ready, request image paths to be loaded.
-  invoke('get_image_paths', { forceSelection: false, verbose: state.verbose });
+  invoke('get_image_paths', { forceSelection: false, verbose: state.inputVerbose.checked });
 
   debug("Done.");
 });
