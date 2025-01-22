@@ -1,5 +1,7 @@
 mod common;
 mod image_loading;
+#[cfg(target_os = "ios")]
+mod ios;
 mod plane_covering;
 mod questions;
 mod utils;
@@ -117,6 +119,11 @@ pub fn run() {
             app.store("settings.json")?;
             app.manage(Mutex::new(RevealState::default()));
 
+            #[cfg(target_os = "ios")]
+            {
+                let handle = app.handle().to_owned();
+                ios::mark_home_dir(&handle);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
