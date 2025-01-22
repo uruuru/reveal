@@ -151,16 +151,17 @@ img {
 .settings {
   display: none;
   position: fixed;
-  top: 20px;
-  right: 20px;
-  margin: auto;
-  padding: 15px;
-  width: auto;
-  max-width: 600px;
+  top: 15px;
+  right: 15px;
+  overflow-y: auto;
+  margin: 5px;
+  padding: 10px;
   max-height: 90vh;
   z-index: 2000;
   /* Same as root */
   background-color: #f6f6f6;
+  border-radius: 8px;
+  box-shadow: -2px 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 div.settings-row {
