@@ -26,6 +26,12 @@ const SUPPORTED_IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "webp", "gi
 #[cfg(not(desktop))]
 const SUPPORTED_IMAGE_EXTENSIONS: [&str; 4] = ["jpg", "jpeg", "png", "webp"];
 
+fn is_empty(dir: &PathBuf) -> bool {
+    dir.read_dir()
+        .map(|mut e| e.next().is_none())
+        .unwrap_or(false)
+}
+
 fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles, String> {
     // Look for previous path in settings
     let custom_path = app
@@ -36,7 +42,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
         .and_then(|ps| serde_json::from_value::<PathBuf>(ps).map_err(|e| e.to_string()))
         .and_then(|pb| {
             // The user may have deleted the folder since last execution.
-            if pb.exists() && pb.is_dir() {
+            if pb.exists() && pb.is_dir() && !is_empty(&pb) {
                 Ok(pb)
             } else {
                 Err("Folder from settings does not exist (anymore).".into())
@@ -54,7 +60,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                 .map_err(|tauri_err| e.clone() + "\n" + tauri_err.to_string().as_str())
                 .map(|path| path.join("reveal"))
                 .and_then(|path| {
-                    if path.exists() {
+                    if path.exists() && !is_empty(&path) {
                         Ok(path)
                     } else {
                         Err(e + "\nDefault path does not exist.")
@@ -67,7 +73,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
             if cfg!(target_os = "android") {
                 log::debug!("Trying 'reveal' in user's pictures folder for android ...");
                 let android_pictures = PathBuf::from("/storage/emulated/0/Pictures/reveal");
-                if android_pictures.exists() {
+                if android_pictures.exists() && !is_empty(&android_pictures) {
                     Ok(FolderOrFiles::Folder(FilePath::from(android_pictures)))
                 } else {
                     Err(e + "\nAndroid default path does not exist.")
@@ -79,7 +85,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                     .map_err(|tauri_err| e.clone() + "\n" + tauri_err.to_string().as_str())
                     .map(|path| path.join("reveal"))
                     .and_then(|path| {
-                        if path.exists() {
+                        if path.exists() && !is_empty(&path) {
                             Ok(path)
                         } else {
                             Err(e + "\niOS default path does not exist.")
@@ -99,7 +105,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                     })
                     .map(|exe_dir| exe_dir.join("reveal_images"))
                     .and_then(|reveal_dir| {
-                        if reveal_dir.exists() && reveal_dir.is_dir() {
+                        if reveal_dir.exists() && reveal_dir.is_dir() && !is_empty(&reveal_dir) {
                             Ok(FolderOrFiles::Folder(FilePath::from(reveal_dir)))
                         } else {
                             Err("No 'reveal_images' folder next to the executable.".into())
