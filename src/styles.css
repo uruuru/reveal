@@ -213,7 +213,7 @@ div.settings-row {
 .control[data-event="d"],
 .control[data-event="y"],
 .control[data-event="i"] {
-  width: 100%
+  width: 100%;
 }
 
 .control[data-event="d"] {
@@ -247,12 +247,10 @@ button.answer {
 
 button.correct {
   background-color: #2bb567;
-
 }
 
 button.wrong {
   background-color: #de5353;
-
 }
 
 /* ----------------------------------------------------- */

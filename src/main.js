@@ -1,27 +1,26 @@
+import { executeIfSettingsChanged, initializeSettingsListeners, loadSettings, resetSettings } from "./settings.js";
+import { printDebug } from "./utils.js";
+
 const { invoke } = window.__TAURI__.core;
 const { message } = window.__TAURI__.dialog;
 const { debug, error } = window.__TAURI__.log;
 const { listen } = window.__TAURI__.event;
 const { load } = window.__TAURI__.store;
 
-import { loadSettings, initializeSettingsListeners, executeIfSettingsChanged, resetSettings } from './settings.js';
-import { printDebug } from './utils.js';
-
 const Action = Object.freeze({
-  load: 'l',
-  info: 'i',
-  next: 'n',
-  previous: 'p',
-  uncover: 'u',
-  clear: 'c',
-  reset: 'r',
-  settings: 's',
-  settings_done: 'd',
-  settings_reset: 'y',
+  load: "l",
+  info: "i",
+  next: "n",
+  previous: "p",
+  uncover: "u",
+  clear: "c",
+  reset: "r",
+  settings: "s",
+  settings_done: "d",
+  settings_reset: "y",
 });
 
-let state = {
-
+const state = {
   polygons: [],
 
   image: 0,
@@ -30,62 +29,63 @@ let state = {
   svgPolygonsHideIdx: 0,
 
   settings: 0,
-}
+};
 
 async function getImage(u) {
   try {
-    const revealObject = await invoke('get_image', { u: u, quizYear: state.inputQuizYear.checked });
+    const revealObject = await invoke("get_image", { u: u, quizYear: state.inputQuizYear.checked });
     state.image.setAttribute("hidden", "hidden");
     state.image.src = `data:image/${revealObject.image_type};base64,${revealObject.image}`;
 
     if (revealObject.question !== undefined) {
-      state.qnaAnswersDiv.innerHTML = '';
+      state.qnaAnswersDiv.innerHTML = "";
       state.qnaAnswersDiv.innerHTML = revealObject.answers
-        .map((a, idx) => `<button 
+        .map(
+          (a, idx) => `<button 
             data-idx=${idx}
             class='answer'>${a}
-          </button>`)
+          </button>`,
+        )
         .join("\n");
 
-      document.querySelectorAll("button.answer").forEach((button) => {
+      for (const button of document.querySelectorAll("button.answer")) {
         button.addEventListener("pointerup", () => {
-          if (button.dataset.idx == revealObject.correct_answer) {
+          if (Number(button.dataset.idx) === Number(revealObject.correct_answer)) {
             button.classList.add("correct");
           } else {
             button.classList.add("wrong");
           }
         });
-      });
+      }
     }
 
-
     // TODO promise fail not handled ...
-    return state.image.decode()
+    return state.image.decode();
   } catch (e) {
     const error_message = `Failed loading image: ${e}`;
     error(error_message);
-    message(error_message, { title: 'Error', kind: 'error' });
+    message(error_message, { title: "Error", kind: "error" });
   }
 }
 
 function uncoverNext() {
   if (state.svgPolygons.length > 0) {
-    let index = state.svgPolygonsHideIdx++ % state.svgPolygons.length;
-    state.svgPolygons[index].style.opacity = '0';
+    const index = state.svgPolygonsHideIdx++ % state.svgPolygons.length;
+    state.svgPolygons[index].style.opacity = "0";
   }
 }
 
 function coverFull() {
-  state.svgPolygons.forEach(p => {
-    p.style.opacity = '1';
-  });
+  for (const p of state.svgPolygons) {
+    p.style.opacity = "1";
+  }
   state.svgPolygonsHideIdx = 0;
 }
 
 function uncoverFull() {
-  state.svgPolygons.forEach(p => {
-    p.style.opacity = '0';
-  });
+  for (const p of state.svgPolygons) {
+    p.style.opacity = "0";
+  }
   state.svgPolygonsHideIdx = 0;
 }
 
@@ -95,13 +95,13 @@ async function loadCovering() {
   const n = Number(state.inputObjectCount.value);
   debug(`Requesting covering for ${w}x${h} with ${n}.`);
 
-  const polygons = await invoke('load_covering', {
+  const polygons = await invoke("load_covering", {
     n: n,
     width: w,
     height: h,
   });
 
-  state.polygons = polygons.map(polygon => {
+  state.polygons = polygons.map((polygon) => {
     return polygon.pnts;
   });
 
@@ -111,27 +111,29 @@ async function loadCovering() {
   state.svg.replaceChildren();
 
   state.svgPolygons = [];
-  state.polygons.forEach(points => {
-    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+  for (const points of state.polygons) {
+    const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     state.svg.appendChild(polygon);
 
-    polygon.setAttribute('fill', getRandomColorHex());
-    polygon.setAttribute('stroke-width', '1');
-    polygon.setAttribute('points', points.map(p => `${p.x},${p.y}`).join(' '));
+    polygon.setAttribute("fill", getRandomColorHex());
+    polygon.setAttribute("stroke-width", "1");
+    polygon.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
     state.svgPolygons.push(polygon);
-  });
+  }
 
   state.svgPolygonsHideIdx = 0;
   state.image.removeAttribute("hidden");
 }
 
-const rgbMax = Math.pow(2, 24) - 1;
+const rgbMax = 2 ** 24 - 1;
 function getRandomColorHex() {
-  return `#${Math.round(Math.random() * rgbMax).toString(16).padStart(6, '0')}`;
+  return `#${Math.round(Math.random() * rgbMax)
+    .toString(16)
+    .padStart(6, "0")}`;
 }
 
 async function executeAction(action_identifier) {
-  debug(`Executing action ${action_identifier}`)
+  debug(`Executing action ${action_identifier}`);
   switch (action_identifier) {
     case Action.uncover:
       uncoverNext();
@@ -140,12 +142,10 @@ async function executeAction(action_identifier) {
       coverFull();
       break;
     case Action.next:
-      getImage(1)
-        .then(() => loadCovering());
+      getImage(1).then(() => loadCovering());
       break;
     case Action.previous:
-      getImage(-1)
-        .then(() => loadCovering());
+      getImage(-1).then(() => loadCovering());
       break;
     case Action.clear:
       uncoverFull();
@@ -154,21 +154,20 @@ async function executeAction(action_identifier) {
       await printDebug();
       break;
     case Action.load:
-      await invoke('get_image_paths', { forceSelection: true, verbose: state.inputVerbose.checked });
+      await invoke("get_image_paths", { forceSelection: true, verbose: state.inputVerbose.checked });
       break;
     case Action.settings:
       // Toggle the state
-      if (state.settingsDiv.style.display !== 'inline') {
-        state.settingsDiv.style.display = 'inline';
+      if (state.settingsDiv.style.display !== "inline") {
+        state.settingsDiv.style.display = "inline";
       } else {
-        state.settingsDiv.style.display = 'none';
+        state.settingsDiv.style.display = "none";
       }
       break;
     case Action.settings_done:
-      state.settingsDiv.style.display = 'none';
+      state.settingsDiv.style.display = "none";
       executeIfSettingsChanged(() => {
-        getImage(0)
-          .then(() => loadCovering());
+        getImage(0).then(() => loadCovering());
       });
       break;
     case Action.settings_reset:
@@ -179,26 +178,26 @@ async function executeAction(action_identifier) {
 }
 
 function registerControlButtons() {
-  document.querySelectorAll(".control").forEach((button) => {
-    button.addEventListener('pointerup', (e) => {
-      let action = button.dataset.event.toLowerCase();
+  for (const button of document.querySelectorAll(".control")) {
+    button.addEventListener("pointerup", (e) => {
+      const action = button.dataset.event.toLowerCase();
       executeAction(action);
       e.preventDefault();
       e.stopImmediatePropagation();
     });
-  });
+  }
 }
 
 function registerKeyboard() {
-  document.addEventListener('keyup', (event) => {
+  document.addEventListener("keyup", (event) => {
     // By default, react to the key as specified by the 'data-event' in the html.
     // But additionally react to some special keys:
     let action = event.key.toLowerCase();
     switch (event.code) {
-      case 'Space':
+      case "Space":
         action = Action.uncover;
         break;
-      case 'Delete':
+      case "Delete":
         action = Action.clear;
     }
     executeAction(action);
@@ -209,12 +208,12 @@ function registerTouch() {
   // Simple touch shall act as a single uncover.
   // Some care has to be taken to not react to pressing some of the other UI elements,
   // be it regular control buttons or settings.
-  document.addEventListener('pointerup', (e) => {
+  document.addEventListener("pointerup", (e) => {
     // Ignore interaction with the settings pane
-    if (e.target && e.target.closest(".settings") !== null) {
+    if (e.target?.closest(".settings") !== null) {
       return;
     }
-    if (e.target && e.target.classList.contains('answer')) {
+    if (e.target?.classList.contains("answer")) {
       return;
     }
     executeAction(Action.uncover);
@@ -227,20 +226,20 @@ function registerTouch() {
   //   up:    reset covering (fully cover)
   //   right: next image
   //   left:  previous image
-  let touchStart = { x: 0, y: 0, };
-  let touchEnd = { x: 0, y: 0, };
+  const touchStart = { x: 0, y: 0 };
+  const touchEnd = { x: 0, y: 0 };
   let touchMulti = false;
 
   function reactToSwipe() {
     // TODO make the minimal swipe distance configurable in settings
     const threshold = 30;
-    let absX = Math.abs(touchStart.x - touchEnd.x);
-    let absY = Math.abs(touchStart.y - touchEnd.y);
+    const absX = Math.abs(touchStart.x - touchEnd.x);
+    const absY = Math.abs(touchStart.y - touchEnd.y);
     if (absX > absY && absX > threshold) {
       // horizontal
       if (touchEnd.x < touchStart.x) {
-        // Use "natural scrolling", 
-        // i.e. if the user "moves" the screen to the left, 
+        // Use "natural scrolling",
+        // i.e. if the user "moves" the screen to the left,
         // go to the next image.
         executeAction(Action.next); // left
       } else {
@@ -259,24 +258,23 @@ function registerTouch() {
   function isZoomedIn() {
     if (window.visualViewport !== undefined) {
       return window.visualViewport.scale !== 1.0;
-    } else {
-      return false;
     }
+    return false;
   }
 
-  // Take care to avoid undesired behavior when zooming, 
+  // Take care to avoid undesired behavior when zooming,
   // i.e., when the user "pinches" into the image to look at some detail.
-  // We mitigate this by not accepting a swipe if at any point during the 
+  // We mitigate this by not accepting a swipe if at any point during the
   // touch sequence more than one touch point was detected.
-  document.addEventListener('touchstart', e => {
+  document.addEventListener("touchstart", (e) => {
     touchStart.x = e.changedTouches[0].screenX;
     touchStart.y = e.changedTouches[0].screenY;
     touchMulti = e.touches.length > 1;
   });
-  document.addEventListener('touchmove', e => {
+  document.addEventListener("touchmove", (e) => {
     touchMulti |= e.touches.length > 1;
   });
-  document.addEventListener('touchend', e => {
+  document.addEventListener("touchend", (e) => {
     if (!isZoomedIn() && !touchMulti) {
       touchEnd.x = e.changedTouches[0].screenX;
       touchEnd.y = e.changedTouches[0].screenY;
@@ -286,10 +284,9 @@ function registerTouch() {
 }
 
 function registerTauriEvents() {
-
   function tf_listen(event_name, fun) {
     listen(event_name, (event) => {
-      debug("Handling event: " + JSON.stringify(event));
+      debug(`Handling event: ${JSON.stringify(event)}`);
       fun(event);
     });
   }
@@ -298,19 +295,17 @@ function registerTauriEvents() {
     if (event.payload) {
       state.locationSpan.textContent = `Images from: ${event.payload}.`;
     } else {
-      state.locationSpan.textContent = `Images hand-selected.`;
+      state.locationSpan.textContent = "Images hand-selected.";
     }
-    getImage(0)
-      .then(() => loadCovering());
+    getImage(0).then(() => loadCovering());
   });
 
   tf_listen("image-paths-failed", (_) => {
-    state.locationSpan.textContent = 'Exemplary images.';
-    state.progressSpan.textContent = '';
-    // Since no images have been loaded, this will return randomly picked 
+    state.locationSpan.textContent = "Exemplary images.";
+    state.progressSpan.textContent = "";
+    // Since no images have been loaded, this will return randomly picked
     // exemplary images.
-    getImage(0)
-      .then(() => loadCovering());
+    getImage(0).then(() => loadCovering());
   });
 
   tf_listen("image-index", (event) => {
@@ -320,14 +315,13 @@ function registerTauriEvents() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-
   debug("Loading ...");
 
   // GUI
   state.image = document.querySelector("#image-container");
   state.slider = document.querySelector("#sliderN");
-  state.svg = document.querySelector('#overlay-svg');
-  state.slider = document.querySelector('#sliderN');
+  state.svg = document.querySelector("#overlay-svg");
+  state.slider = document.querySelector("#sliderN");
   state.progressSpan = document.querySelector("#progress");
   state.locationSpan = document.querySelector("#location");
   state.qnaAnswersDiv = document.querySelector("#answers");
@@ -342,7 +336,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Before setting up everything, load the current settings,
   // which may have been persisted from a previous execution.
-  state.store = await load('settings.json', { autoSave: true });
+  state.store = await load("settings.json", { autoSave: true });
   await loadSettings(state);
   initializeSettingsListeners(state);
 
@@ -356,7 +350,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerTauriEvents();
 
   // UI ready, request image paths to be loaded.
-  invoke('get_image_paths', { forceSelection: false, verbose: state.inputVerbose.checked });
+  invoke("get_image_paths", { forceSelection: false, verbose: state.inputVerbose.checked });
 
   debug("Done.");
 });
