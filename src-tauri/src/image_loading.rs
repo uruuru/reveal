@@ -353,7 +353,11 @@ const EXAMPLES: [(&[u8], &str); 5] = [
 /// Returns a randomly selected exemplary image.
 pub fn example() -> ImageWithMeta {
     let mut rng = rand::thread_rng();
-    let selected = EXAMPLES[rng.gen_range(0..EXAMPLES.len())];
+    let supported_examples = EXAMPLES
+        .iter()
+        .filter(|(_, ext)| SUPPORTED_IMAGE_EXTENSIONS.contains(ext))
+        .collect::<Vec<_>>();
+    let selected = supported_examples[rng.gen_range(0..supported_examples.len())];
     ImageWithMeta {
         base64: general_purpose::STANDARD.encode(selected.0),
         image_type: selected.1.into(),
