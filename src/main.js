@@ -16,8 +16,8 @@ const Action = Object.freeze({
   clear: "c",
   reset: "r",
   settings: "s",
-  settings_done: "d",
-  settings_reset: "y",
+  settingsDone: "d",
+  settingsReset: "y",
 });
 
 const state = {
@@ -62,9 +62,9 @@ async function getImage(u) {
     // TODO promise fail not handled ...
     return state.image.decode();
   } catch (e) {
-    const error_message = `Failed loading image: ${e}`;
-    error(error_message);
-    message(error_message, { title: "Error", kind: "error" });
+    const errorMessage = `Failed loading image: ${e}`;
+    error(errorMessage);
+    message(errorMessage, { title: "Error", kind: "error" });
   }
 }
 
@@ -132,9 +132,9 @@ function getRandomColorHex() {
     .padStart(6, "0")}`;
 }
 
-async function executeAction(action_identifier) {
-  debug(`Executing action ${action_identifier}`);
-  switch (action_identifier) {
+async function executeAction(actionIdentifier) {
+  debug(`Executing action ${actionIdentifier}`);
+  switch (actionIdentifier) {
     case Action.uncover:
       uncoverNext();
       break;
@@ -164,13 +164,15 @@ async function executeAction(action_identifier) {
         state.settingsDiv.style.display = "none";
       }
       break;
-    case Action.settings_done:
-      state.settingsDiv.style.display = "none";
-      executeIfSettingsChanged(() => {
-        getImage(0).then(() => loadCovering());
-      });
+    case Action.settingsDone:
+      {
+        state.settingsDiv.style.display = "none";
+        executeIfSettingsChanged(() => {
+          getImage(0).then(() => loadCovering());
+        });
+      }
       break;
-    case Action.settings_reset:
+    case Action.settingsReset:
       await resetSettings(state);
       break;
     default:
@@ -199,6 +201,8 @@ function registerKeyboard() {
         break;
       case "Delete":
         action = Action.clear;
+        break;
+      default:
     }
     executeAction(action);
   });
@@ -275,7 +279,7 @@ function registerTouch() {
     touchMulti |= e.touches.length > 1;
   });
   document.addEventListener("touchend", (e) => {
-    if (!isZoomedIn() && !touchMulti) {
+    if (!(isZoomedIn() || touchMulti)) {
       touchEnd.x = e.changedTouches[0].screenX;
       touchEnd.y = e.changedTouches[0].screenY;
       reactToSwipe();
@@ -284,14 +288,14 @@ function registerTouch() {
 }
 
 function registerTauriEvents() {
-  function tf_listen(event_name, fun) {
-    listen(event_name, (event) => {
+  function tfListen(eventName, fun) {
+    listen(eventName, (event) => {
       debug(`Handling event: ${JSON.stringify(event)}`);
       fun(event);
     });
   }
 
-  tf_listen("image-paths-updated", (event) => {
+  tfListen("image-paths-updated", (event) => {
     if (event.payload) {
       state.locationSpan.textContent = `Images from: ${event.payload}.`;
     } else {
@@ -300,7 +304,7 @@ function registerTauriEvents() {
     getImage(0).then(() => loadCovering());
   });
 
-  tf_listen("image-paths-failed", (_) => {
+  tfListen("image-paths-failed", (_) => {
     state.locationSpan.textContent = "Exemplary images.";
     state.progressSpan.textContent = "";
     // Since no images have been loaded, this will return randomly picked
@@ -308,7 +312,7 @@ function registerTauriEvents() {
     getImage(0).then(() => loadCovering());
   });
 
-  tf_listen("image-index", (event) => {
+  tfListen("image-index", (event) => {
     const indexState = event.payload;
     state.progressSpan.textContent = `${indexState[0] + 1} / ${indexState[1]}`;
   });
