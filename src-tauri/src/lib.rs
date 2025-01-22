@@ -76,11 +76,17 @@ fn get_image_paths(force_selection: bool, verbose: bool, app: AppHandle) -> Stri
                 let mut state = state.lock().unwrap();
                 state.images = paths;
                 state.image_index = 0;
-                // TODO send the first reveal object, additionally? Or the state / loaded paths?
                 app.emit("image-paths-updated", container).unwrap();
             }
             Err(message) => {
-                app.emit("image-paths-failed", message).unwrap();
+                // TODO return proper errors and differentiate accordingly here
+                if message != "User canceled." {
+                    let state = app.state::<Mutex<RevealState>>();
+                    let mut state = state.lock().unwrap();
+                    state.images.clear();
+                    state.image_index = 0;
+                    app.emit("image-paths-failed", message).unwrap();
+                }
             }
         }
     });
