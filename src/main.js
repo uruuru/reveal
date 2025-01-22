@@ -313,6 +313,14 @@ function registerTouch() {
     }
   }
 
+  function isZoomedIn() {
+    if (window.visualViewport !== undefined) {
+      return window.visualViewport.scale !== 1.0;
+    } else {
+      return false;
+    }
+  }
+
   // Take care to avoid undesired behavior when zooming, 
   // i.e., when the user "pinches" into the image to look at some detail.
   // We mitigate this by not accepting a swipe if at any point during the 
@@ -326,7 +334,7 @@ function registerTouch() {
     touchMulti |= e.touches.length > 1;
   });
   document.addEventListener('touchend', e => {
-    if (!touchMulti) {
+    if (!isZoomedIn() && !touchMulti) {
       touchEnd.x = e.changedTouches[0].screenX;
       touchEnd.y = e.changedTouches[0].screenY;
       reactToSwipe();
