@@ -95,15 +95,6 @@ img {
 
 #image-container {
   z-index: -1;
-
-  user-select: none;
-  -webkit-user-select: none;
-  /* Safari */
-  -moz-user-select: none;
-  /* Firefox */
-  -ms-user-select: none;
-  /* IE10+/Edge */
-
   /* Scale preserving aspect ratio. */
   object-fit: contain;
 }
@@ -143,6 +134,16 @@ img {
   right: 20px;
   width: auto;
   z-index: 1003;
+}
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  /* Safari */
+  -moz-user-select: none;
+  /* Firefox */
+  -ms-user-select: none;
+  /* IE10+/Edge */
 }
 
 /* ----------------------------------------------------- */
@@ -185,7 +186,7 @@ div.settings-row {
 }
 
 .settings label {
-  min-width: 120px;
+  min-width: 140px;
   flex-shrink: 0;
 }
 
@@ -218,6 +219,40 @@ div.settings-row {
 .control[data-event="d"] {
   background: #007bff;
   color: white;
+}
+
+/* ----------------------------------------------------- */
+/*        Question and Answers                           */
+/* ----------------------------------------------------- */
+
+div.qna {
+  position: fixed;
+  bottom: 5vh;
+  left: 0;
+}
+
+div#answers,
+div#question {
+  margin: 2px;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100vw;
+  z-index: 1004;
+}
+
+button.answer {
+  font-weight: bold;
+}
+
+button.correct {
+  background-color: #2bb567;
+
+}
+
+button.wrong {
+  background-color: #de5353;
+
 }
 
 /* ----------------------------------------------------- */

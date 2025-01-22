@@ -55,7 +55,6 @@ pub struct RevealObject {
     pub image: String,
     /// MIME subtype of the image, e.g. 'png' or 'webp'
     pub image_type: String,
-    pub covering: String, // Custom format
     pub question: Option<String>,
     pub answers: Vec<String>,
     pub correct_answer: usize,

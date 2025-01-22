@@ -48,6 +48,14 @@ async function loadSettings(state) {
     }
   });
 
+  await state.store.get("quiz_guess_year").then((v) => {
+    if (v !== undefined) {
+      state.inputQuizYear.checked = JSON.parse(v);
+    } else {
+      state.inputQuizYear.checked = false;
+    }
+  });
+
   debug(`Loaded initial settings: ${JSON.stringify(await state.store.entries(), null, "  ")}.`);
 }
 
@@ -70,6 +78,11 @@ function initializeSettingsListeners(state) {
   // Note: use 'change' event to not trigger while dragging
   state.inputObjectCount.addEventListener('change', (e) => {
     state.store.set("object_count", e.target.value);
+    settingsDirty = true;
+  });
+
+  state.inputQuizYear.addEventListener('input', (e) => {
+    state.store.set("quiz_guess_year", e.target.checked);
     settingsDirty = true;
   });
 }

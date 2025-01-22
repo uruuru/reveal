@@ -1,9 +1,11 @@
 mod common;
 mod image_loading;
 mod plane_covering;
+mod questions;
 mod utils;
 
 use common::{Polygon, RevealObject, RevealSettings, RevealState};
+use questions::simple_year_question;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::sync::Mutex;
@@ -25,18 +27,37 @@ fn debug_infos(app_handle: AppHandle) -> String {
 #[tauri::command]
 fn get_image(
     u: isize,
+    quiz_year: bool,
     app_handle: AppHandle,
     state: tauri::State<'_, Mutex<RevealState>>,
 ) -> RevealObject {
     image_loading::get_image(u, &app_handle, &state)
         .or_else(|_e| Ok::<_, String>(image_loading::example()))
-        .map(|image_and_meta| RevealObject {
-            image: image_and_meta.base64,
-            image_type: image_and_meta.image_type,
-            covering: String::new(),
-            question: None,
-            answers: Vec::new(),
-            correct_answer: 0,
+        .map(|image_and_meta| {
+            let mut reveal_object = RevealObject {
+                image: image_and_meta.base64,
+                image_type: image_and_meta.image_type,
+                question: None,
+                answers: Vec::new(),
+                correct_answer: 0,
+            };
+            if quiz_year {
+                log::debug!(
+                    "Quiz year requested: {}",
+                    image_and_meta
+                        .date_taken
+                        .map(|dt| dt.to_string())
+                        .unwrap_or("Unknown date".into())
+                );
+                let qna = image_and_meta
+                    .date_taken
+                    .map(|dt| simple_year_question(&dt))
+                    .unwrap_or_default();
+                reveal_object.question = Some(qna.question);
+                reveal_object.answers.extend(qna.answers);
+                reveal_object.correct_answer = qna.idx_correct;
+            }
+            reveal_object
         })
         .unwrap()
 }

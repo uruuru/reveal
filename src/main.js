@@ -34,9 +34,30 @@ let state = {
 
 async function getImage(u) {
   try {
-    const revealObject = await invoke('get_image', { u: u });
+    const revealObject = await invoke('get_image', { u: u, quizYear: state.inputQuizYear.checked });
     state.image.setAttribute("hidden", "hidden");
     state.image.src = `data:image/${revealObject.image_type};base64,${revealObject.image}`;
+
+    if (revealObject.question !== undefined) {
+      state.qnaAnswersDiv.innerHTML = '';
+      state.qnaAnswersDiv.innerHTML = revealObject.answers
+        .map((a, idx) => `<button 
+            data-idx=${idx}
+            class='answer'>${a}
+          </button>`)
+        .join("\n");
+
+      document.querySelectorAll("button.answer").forEach((button) => {
+        button.addEventListener("pointerup", () => {
+          if (button.dataset.idx == revealObject.correct_answer) {
+            button.classList.add("correct");
+          } else {
+            button.classList.add("wrong");
+          }
+        });
+      });
+    }
+
 
     // TODO promise fail not handled ...
     return state.image.decode()
@@ -190,7 +211,10 @@ function registerTouch() {
   // be it regular control buttons or settings.
   document.addEventListener('pointerup', (e) => {
     // Ignore interaction with the settings pane
-    if (e.target.closest(".settings") !== null) {
+    if (e.target && e.target.closest(".settings") !== null) {
+      return;
+    }
+    if (e.target && e.target.classList.contains('answer')) {
       return;
     }
     executeAction(Action.uncover);
@@ -306,6 +330,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   state.slider = document.querySelector('#sliderN');
   state.progressSpan = document.querySelector("#progress");
   state.locationSpan = document.querySelector("#location");
+  state.qnaAnswersDiv = document.querySelector("#answers");
 
   // Settings
   state.settingsDiv = document.querySelector("#settings");
@@ -313,6 +338,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   state.inputVerbose = document.querySelector("#input-verbose");
   state.inputObjectType = document.querySelector("#input-object-type");
   state.inputObjectCount = document.querySelector("#input-object-count");
+  state.inputQuizYear = document.querySelector("#input-quiz-year");
 
   // Before setting up everything, load the current settings,
   // which may have been persisted from a previous execution.

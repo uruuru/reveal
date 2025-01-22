@@ -10,7 +10,7 @@
 </head>
 
 <body>
-  <div id="controls" class="controls">
+  <div id="controls" class="controls no-select">
     <div class="row1">
       <button class="control" name="settings" data-event="s">⚙</button>
     </div>
@@ -27,7 +27,7 @@
     </div>
   </div>
 
-  <div id="settings" class="settings">
+  <div id="settings" class="settings no-select">
     <fieldset>
       <legend>General</legend>
       <div>
@@ -57,6 +57,13 @@
         </select>
       </div>
     </fieldset>
+    <fieldset>
+      <legend>Quiz</legend>
+      <div>
+        <label for="input-quiz-year">Guess the year:</label>
+        <input type="checkbox" id="input-quiz-year" name="input-quiz-year" />
+      </div>
+    </fieldset>
     <div class="settings-row">
       <button class="settings-done control" data-event="d">Done</button>
     </div>
@@ -66,12 +73,19 @@
     </div>
   </div>
 
-  <main class="container">
+  <main class="container no-select">
     <svg id="overlay-svg" preserveAspectRatio="meet" xmlns="http://www.w3.org/2000/svg"></svg>
     <img id="image-container" src="" alt="">
   </main>
 
-  <div class="footer">
+  <div class="qna no-select">
+    <div id="question">
+      <span id="question-span"></span>
+    </div>
+    <div id="answers"></div>
+  </div>
+
+  <div class="footer no-select">
     <span id="progress">x / x</span>
     <span id="location">Current location: </span>
   </div>
