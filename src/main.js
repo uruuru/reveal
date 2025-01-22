@@ -4,7 +4,8 @@ const { debug, error } = window.__TAURI__.log;
 const { listen } = window.__TAURI__.event;
 const { load } = window.__TAURI__.store;
 
-import { isMobile, printDebug } from './utils.js';
+import { loadSettings, initializeSettingsListeners, executeIfSettingsChanged, resetSettings } from './settings.js';
+import { printDebug } from './utils.js';
 
 const Action = Object.freeze({
   load: 'l',
@@ -29,94 +30,6 @@ let state = {
   svgPolygonsHideIdx: 0,
 
   settings: 0,
-}
-
-async function loadSettings() {
-  await state.store.get("show_controls").then((v) => {
-    if (v !== undefined) {
-      state.inputShowControls.checked = JSON.parse(v);
-    } else {
-      state.inputShowControls.checked = !isMobile();
-    }
-  });
-
-  // TODO defaults
-  await state.store.get("object_type").then((v) => {
-    if (v !== undefined) {
-      state.inputObjectType.value = v;
-    }
-  });
-  await state.store.get("object_count").then((v) => {
-    if (v !== undefined) {
-      state.inputObjectCount.value = v;
-    }
-  });
-
-  await state.store.get("verbose").then((v) => {
-    if (v !== undefined) {
-      state.inputVerbose.checked = JSON.parse(v);
-    } else {
-      state.inputVerbose.checked = true;
-    }
-  });
-}
-
-function persistSettings() {
-  state.store.set("show_controls", state.inputShowControls.checked);
-  state.store.set("verbose", state.inputVerbose.checked); 
-  state.store.set("object_type", state.inputObjectType.value);
-  state.store.set("object_count", state.inputObjectCount.value);
-}
-
-async function getSettings() {
-  state.store = await load('settings.json', { autoSave: true });
-
-  await loadSettings();
-
-  debug(`Loaded initial settings: ${JSON.stringify(state.settings, null, "  ")}.`);
-
-  persistSettings();
-
-  // TODO ability to clear the default path ...
-}
-
-
-function initializeSettingsListeners(state) {
-
-  // TODO create inner function to be used that stores settings after execution below
-
-  // Slider
-  state.inputObjectCount.oninput = function (e) {
-    persistSettings();
-    e.preventDefault();
-    e.stopImmediatePropagation();
-
-    // TODO maybe only reload on done button press?
-    loadCovering();
-  }
-
-  // Set default controls state
-  let updateFun = event => {
-    const showControls = state.inputShowControls.checked;
-    if (event) {
-      persistSettings();
-      event.stopImmediatePropagation();
-    }
-    document.querySelectorAll(".controls-optional").forEach(element => {
-      if (showControls) {
-        element.style.display = 'block';
-      } else {
-        element.style.display = 'none';
-      }
-    });
-    //TODO ... event? based on .settings?!
-  };
-  // TODO need this to initialize the visibility state of the controls
-  updateFun();
-
-  // 'click' fires after input checkbox state has changed
-  // TODO rather use an onchange?
-  state.inputShowControls.addEventListener("click", updateFun);
 }
 
 async function getImage(u) {
@@ -232,10 +145,13 @@ async function executeAction(action_identifier) {
       break;
     case Action.settings_done:
       state.settingsDiv.style.display = 'none';
-      // TODO react to changes accordingly
+      executeIfSettingsChanged(() => {
+        getImage(0)
+          .then(() => loadCovering());
+      });
       break;
     case Action.settings_reset:
-      // TODO
+      await resetSettings(state);
       break;
     default:
   }
@@ -400,7 +316,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Before setting up everything, load the current settings,
   // which may have been persisted from a previous execution.
-  await getSettings();
+  state.store = await load('settings.json', { autoSave: true });
+  await loadSettings(state);
   initializeSettingsListeners(state);
 
   // Initialize interactivity
