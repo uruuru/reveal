@@ -18,6 +18,7 @@ use crate::common::{ImageWithMeta, RevealState};
 #[derive(Debug)]
 enum FolderOrFiles {
     Folder(FilePath),
+    #[allow(dead_code)]
     Files(Vec<FilePath>),
 }
 
