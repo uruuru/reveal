@@ -99,6 +99,7 @@ async function loadCovering() {
     n: n,
     width: w,
     height: h,
+    objectType: state.inputObjectType.value,
   });
 
   state.polygons = polygons.map((polygon) => {

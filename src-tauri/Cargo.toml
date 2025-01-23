@@ -20,6 +20,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 base64 = "0.22.1"
 chrono = "0.4.39"
+delaunator = "1.0.2"
 itertools = "0.14.0"
 kamadak-exif = "0.6.1"
 log = "0.4.25"

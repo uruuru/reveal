@@ -96,8 +96,17 @@ fn get_image_paths(force_selection: bool, verbose: bool, app: AppHandle) -> Stri
 }
 
 #[tauri::command]
-fn load_covering(width: f64, height: f64, n: usize) -> Result<Vec<Polygon>, String> {
-    let mut covering = plane_covering::cover_rectangles(n, width, height);
+fn load_covering(
+    width: f64,
+    height: f64,
+    n: usize,
+    object_type: String,
+) -> Result<Vec<Polygon>, String> {
+    let mut covering = match object_type.as_str() {
+        "Rectangles" => plane_covering::cover_rectangles(n, width, height),
+        _ => plane_covering::cover_triangles(n, width, height),
+    };
+
     covering.shuffle(&mut thread_rng());
     Ok(covering)
 }
