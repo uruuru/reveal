@@ -27,10 +27,14 @@ const SUPPORTED_IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "webp", "gi
 #[cfg(not(desktop))]
 const SUPPORTED_IMAGE_EXTENSIONS: [&str; 4] = ["jpg", "jpeg", "png", "webp"];
 
-fn is_empty(dir: &PathBuf) -> bool {
-    dir.read_dir()
-        .map(|mut e| e.next().is_none())
-        .unwrap_or(false)
+fn exists_is_dir_and_non_empty(path: &PathBuf) -> bool {
+    path.exists()
+        && path.is_dir()
+        && path
+            .read_dir()
+            .ok()
+            .map(|mut dir| dir.next().is_some())
+            .unwrap_or(false)
 }
 
 fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles, String> {
@@ -39,14 +43,14 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
         .get_store("settings.json")
         .unwrap()
         .get("loaded_from_folder")
-        .ok_or(String::from("No path in settings.json."))
+        .ok_or(String::from("No folder saved in local settings."))
         .and_then(|ps| serde_json::from_value::<PathBuf>(ps).map_err(|e| e.to_string()))
         .and_then(|pb| {
             // The user may have deleted the folder since last execution.
-            if pb.exists() && pb.is_dir() && !is_empty(&pb) {
+            if exists_is_dir_and_non_empty(&pb) {
                 Ok(pb)
             } else {
-                Err("Folder from settings does not exist (anymore).".into())
+                Err("Folder from local settings does not exist (anymore).".into())
             }
         })
         .map(|pb| FolderOrFiles::Folder(FilePath::from(pb)));
@@ -58,13 +62,18 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
             log::debug!("Trying 'reveal' in user's pictures folder ...");
             app.path()
                 .picture_dir()
-                .map_err(|tauri_err| e.clone() + "\n" + tauri_err.to_string().as_str())
+                .map_err(|tauri_err| {
+                    e.clone()
+                        + "\nNo user-specific pictures folder ("
+                        + tauri_err.to_string().as_str()
+                        + ")."
+                })
                 .map(|path| path.join("reveal"))
                 .and_then(|path| {
-                    if path.exists() && !is_empty(&path) {
+                    if exists_is_dir_and_non_empty(&path) {
                         Ok(path)
                     } else {
-                        Err(e + "\nDefault path does not exist.")
+                        Err(e + "\nNo 'reveal' folder in user's pictures.")
                     }
                 })
                 .map(FilePath::from)
@@ -74,10 +83,10 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
             if cfg!(target_os = "android") {
                 log::debug!("Trying 'reveal' in user's pictures folder for android ...");
                 let android_pictures = PathBuf::from("/storage/emulated/0/Pictures/reveal");
-                if android_pictures.exists() && !is_empty(&android_pictures) {
+                if exists_is_dir_and_non_empty(&android_pictures) {
                     Ok(FolderOrFiles::Folder(FilePath::from(android_pictures)))
                 } else {
-                    Err(e + "\nAndroid default path does not exist.")
+                    Err(e + "\nNo 'reveal' folder in user's pictures (android).")
                 }
             } else if cfg!(target_os = "ios") {
                 log::debug!("Trying 'reveal' in user's documents folder for ios ...");
@@ -86,10 +95,10 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                     .map_err(|tauri_err| e.clone() + "\n" + tauri_err.to_string().as_str())
                     .map(|path| path.join("reveal"))
                     .and_then(|path| {
-                        if path.exists() && !is_empty(&path) {
+                        if exists_is_dir_and_non_empty(&path) {
                             Ok(path)
                         } else {
-                            Err(e + "\niOS default path does not exist.")
+                            Err(e + "\nNo 'reveal' folder in user's local folder (iOS).")
                         }
                     })
                     .map(FilePath::from)
@@ -102,14 +111,14 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                         exe_path
                             .parent()
                             .map(ToOwned::to_owned)
-                            .ok_or("Unable to access exe's parent folder.".into())
+                            .ok_or(e.clone() + "\nUnable to access exe's parent folder.".into())
                     })
                     .map(|exe_dir| exe_dir.join("reveal_images"))
                     .and_then(|reveal_dir| {
-                        if reveal_dir.exists() && reveal_dir.is_dir() && !is_empty(&reveal_dir) {
+                        if exists_is_dir_and_non_empty(&reveal_dir) {
                             Ok(FolderOrFiles::Folder(FilePath::from(reveal_dir)))
                         } else {
-                            Err("No 'reveal_images' folder next to the executable.".into())
+                            Err(e + "\nNo 'reveal_images' folder next to the executable.".into())
                         }
                     })
             } else {
@@ -134,9 +143,8 @@ fn get_image_paths_user(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles,
         if verbose {
             app.dialog()
                 .message(format!(
-                    "Please select a folder \
-                    from which supported images will be loaded \
-                    in the next dialog."
+                    "Please select a folder in the next dialog \
+                    from which supported images will be loaded."
                 ))
                 .title("Select a folder.")
                 .blocking_show();
@@ -146,16 +154,15 @@ fn get_image_paths_user(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles,
             .file()
             .blocking_pick_folder()
             .map(|f| FolderOrFiles::Folder(f))
-            .ok_or("User canceled.".to_string())
+            .ok_or("User canceled manual selection.".to_string())
     }
     #[cfg(not(desktop))]
     {
         if verbose {
             app.dialog()
                 .message(format!(
-                    "Please select all images \
-                    that shall be loaded \
-                    in the next dialog."
+                    "Please select all images in the next dialog \
+                    that shall be loaded."
                 ))
                 .title("Select images.")
                 .blocking_show();
@@ -168,7 +175,7 @@ fn get_image_paths_user(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles,
             //.add_filter("images", &SUPPORTED_IMAGE_EXTENSIONS)
             .blocking_pick_files()
             .map(|f| FolderOrFiles::Files(f))
-            .ok_or("User canceled.".to_string())
+            .ok_or("User canceled manual selection.".to_string())
     }
     selection
 }
@@ -235,9 +242,12 @@ pub fn get_image_paths(
         }
         Err(message) if !force_user_selection => {
             app.dialog()
-                .message(format!("Could not find a location with images. Will be showing exemplary images.\n\n{}", message))
+                .message(format!(
+                    "We'll be showing exemplary images.\n\nWhat we have tried:\n{}",
+                    message
+                ))
                 .kind(MessageDialogKind::Warning)
-                .title("☹")
+                .title("Could not find images.")
                 .blocking_show();
             Err(message)
         }
