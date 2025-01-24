@@ -28,7 +28,7 @@ async function loadSettings(state) {
     if (v !== undefined) {
       state.inputObjectType.value = v;
     } else {
-      state.inputObjectType.value = "Rectangles";
+      state.inputObjectType.value = "Triangles";
     }
   });
 
