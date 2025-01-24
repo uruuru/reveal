@@ -127,20 +127,24 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
         })
         .or_else(|e| {
             log::debug!("Asking the user to select a folder ...");
-            get_image_paths_user(app, verbose).map_err(|inner| e + "\n" + inner.as_str())
+            get_image_paths_user(app, true, verbose).map_err(|inner| e + "\n" + inner.as_str())
         });
 
     folder_or_files
 }
 
-fn get_image_paths_user(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles, String> {
+fn get_image_paths_user(
+    app: &AppHandle,
+    force_user_selection: bool,
+    verbose: bool,
+) -> Result<FolderOrFiles, String> {
     // Folder picker currently not implemented for mobile, hence we work around it ...
     // ... by letting the user select an image within the desired folder.
     // We need to use the cfg attributes here, since 'blocking_pick_folder' is not available for compilation.
     let selection;
     #[cfg(desktop)]
     {
-        if verbose {
+        if verbose && !force_user_selection {
             app.dialog()
                 .message(format!(
                     "Please select a folder in the next dialog \
@@ -158,7 +162,7 @@ fn get_image_paths_user(app: &AppHandle, verbose: bool) -> Result<FolderOrFiles,
     }
     #[cfg(not(desktop))]
     {
-        if verbose {
+        if verbose && !force_user_selection {
             app.dialog()
                 .message(format!(
                     "Please select all images in the next dialog \
@@ -186,7 +190,7 @@ pub fn get_image_paths(
     verbose: bool,
 ) -> Result<(Option<FilePath>, Vec<FilePath>), String> {
     let folder_or_files = if force_user_selection {
-        get_image_paths_user(app, verbose)
+        get_image_paths_user(app, force_user_selection, verbose)
     } else {
         get_image_paths_automatic(app, verbose)
     };
