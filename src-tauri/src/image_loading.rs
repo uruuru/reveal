@@ -127,7 +127,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
         })
         .or_else(|e| {
             log::debug!("Asking the user to select a folder ...");
-            get_image_paths_user(app, true, verbose).map_err(|inner| e + "\n" + inner.as_str())
+            get_image_paths_user(app, false, verbose).map_err(|inner| e + "\n" + inner.as_str())
         });
 
     folder_or_files
