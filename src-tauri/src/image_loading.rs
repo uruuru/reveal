@@ -213,7 +213,7 @@ pub fn get_image_paths(
             let filtered_and_shuffled_paths = match folder.clone() {
                 FilePath::Path(pb) => Some(pb)
                     .map(load_from_folder)
-                    .map(|t| filter_to_supported_images(&t))
+                    .map(|t| filter_to_supported_images(app, &t))
                     .map(|mut v| {
                         shuffle(&mut v);
                         v
@@ -227,7 +227,7 @@ pub fn get_image_paths(
         Ok(FolderOrFiles::Files(files)) => {
             let number_of_selected = files.len();
             let filtered_and_shuffled_paths = Some(files)
-                .map(|t| filter_to_supported_images(&t))
+                .map(|t| filter_to_supported_images(app, &t))
                 .map(|mut v| {
                     shuffle(&mut v);
                     v
@@ -277,7 +277,7 @@ fn load_from_folder(folder_path: PathBuf) -> Vec<FilePath> {
     }
 }
 
-fn filter_to_supported_images(file_paths: &[FilePath]) -> Vec<FilePath> {
+fn filter_to_supported_images(app: &AppHandle, file_paths: &[FilePath]) -> Vec<FilePath> {
     file_paths
         .iter()
         .filter(|fp| match fp {
@@ -290,12 +290,35 @@ fn filter_to_supported_images(file_paths: &[FilePath]) -> Vec<FilePath> {
                 .and_then(|ext| ext.to_str())
                 .map(|ext| SUPPORTED_IMAGE_EXTENSIONS.contains(&ext.to_lowercase().as_str()))
                 .unwrap_or(false),
-            FilePath::Url(url) => url
-                .as_str()
-                .rfind('.')
-                .map(|pos| url.as_str()[pos + 1..].into())
-                .map(|ext| SUPPORTED_IMAGE_EXTENSIONS.contains(&ext))
-                .unwrap_or(false),
+            FilePath::Url(url) => {
+                log::debug!("Checking extension of {:?}", url);
+                #[cfg(target_os = "android")]
+                {
+                    // Android content urls start with 'content://'
+                    // and do _not_ necessarily include the original file name nor the file extension
+                    // TODO hopefully the following is provided by 'tauri_plugin_fs' at some point.
+                    use crate::reveal_plugin_android::{MimeRequestResponse, RevealAndroidExt};
+                    let response = app.reveal_android().get_mime_type(MimeRequestResponse {
+                        value: Some(url.to_string()),
+                    });
+                    log::debug!("Response from android mime request: {:?}", response);
+                    match response {
+                        Ok(MimeRequestResponse {
+                            value: Some(mime_type),
+                        }) => SUPPORTED_IMAGE_EXTENSIONS.contains(&mime_type.as_str()),
+                        _ => false,
+                    }
+                }
+                #[cfg(not(target_os = "android"))]
+                {
+                    // iOS urls start with file:// and contain the file extension
+                    url.as_str()
+                        .rfind('.')
+                        .map(|pos| url.as_str()[pos + 1..].into())
+                        .map(|ext| SUPPORTED_IMAGE_EXTENSIONS.contains(&ext))
+                        .unwrap_or(false)
+                }
+            }
         })
         .map(ToOwned::to_owned)
         .collect()
