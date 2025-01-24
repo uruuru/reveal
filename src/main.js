@@ -297,11 +297,14 @@ function registerTauriEvents() {
   }
 
   tfListen("image-paths-updated", (event) => {
-    if (event.payload) {
-      state.locationSpan.textContent = `Images from: ${event.payload}.`;
+    const [container, count] = event.payload;
+    const plural = count > 1 ? "s" : "";
+    if (container) {
+      state.locationSpan.textContent = `Image${plural} from: ${event.payload}.`;
     } else {
-      state.locationSpan.textContent = "Images hand-selected.";
+      state.locationSpan.textContent = `Image${plural} hand-selected.`;
     }
+    state.progressSpan.textContent = "";
     getImage(0).then(() => loadCovering());
   });
 

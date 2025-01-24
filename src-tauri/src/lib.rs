@@ -37,7 +37,22 @@ fn get_image(
     state: tauri::State<'_, Mutex<RevealState>>,
 ) -> RevealObject {
     image_loading::get_image(u, &app_handle, &state)
-        .or_else(|_e| Ok::<_, String>(image_loading::example()))
+        .or_else(|e| {
+            // Note that if the state does not contain any paths,
+            // the 'get_image' method will already return exemplary data.
+            // Hence, here we handle errors that have occurred during the
+            // actual loading process.
+            app_handle
+                .dialog()
+                .message(format!(
+                    "Couldn't load an image. We'll show examples.\n\nDetails:\n{}",
+                    e
+                ))
+                .kind(MessageDialogKind::Warning)
+                .title("Loading image failed.")
+                .show(|_| {});
+            Ok::<_, String>(image_loading::example())
+        })
         .map(|image_and_meta| {
             let mut reveal_object = RevealObject {
                 image: image_and_meta.base64,
@@ -105,14 +120,21 @@ fn get_image_paths(force_selection: bool, verbose: bool, app: AppHandle) -> Stri
     tauri::async_runtime::spawn(async move {
         match image_loading::get_image_paths(force_selection, &app, verbose) {
             Ok((container, paths)) => {
-                log::debug!("Found {} images.", paths.len());
+                let img_cnt = paths.len();
+                log::debug!("Found {} images.", img_cnt);
                 log::trace!("Final set of image paths: {:?}.", paths);
 
                 let state = app.state::<Mutex<RevealState>>();
                 let mut state = state.lock().unwrap();
                 state.images = paths;
                 state.image_index = 0;
-                app.emit("image-paths-updated", container).unwrap();
+
+                if img_cnt > 0 {
+                    app.emit("image-paths-updated", (container, img_cnt))
+                        .unwrap();
+                } else {
+                    app.emit("image-paths-failed", "NoImages").unwrap();
+                }
             }
             Err(message) => {
                 // TODO return proper errors and differentiate accordingly here

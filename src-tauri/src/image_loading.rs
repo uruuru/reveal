@@ -225,15 +225,7 @@ pub fn get_image_paths(
             Ok((Some(folder.clone()), filtered_and_shuffled_paths))
         }
         Ok(FolderOrFiles::Files(files)) => {
-            if verbose {
-                app.dialog()
-                    .message(format!(
-                        "We'll use the supported images of the {} you selected.",
-                        files.len()
-                    ))
-                    .blocking_show();
-            }
-
+            let number_of_selected = files.len();
             let filtered_and_shuffled_paths = Some(files)
                 .map(|t| filter_to_supported_images(&t))
                 .map(|mut v| {
@@ -241,6 +233,26 @@ pub fn get_image_paths(
                     v
                 })
                 .unwrap();
+
+            if verbose {
+                let plural = (filtered_and_shuffled_paths.len() > 1)
+                    .then(|| "s")
+                    .unwrap_or("");
+                let info_message = if number_of_selected != filtered_and_shuffled_paths.len() {
+                    format!(
+                        "We'll use {} of the {} selected image{}. The others are not supported.",
+                        filtered_and_shuffled_paths.len(),
+                        number_of_selected,
+                        plural
+                    )
+                } else {
+                    format!(
+                        "We'll use all of the {} selected image{}.",
+                        number_of_selected, plural
+                    )
+                };
+                app.dialog().message(info_message).blocking_show();
+            }
 
             Ok((None, filtered_and_shuffled_paths))
         }
@@ -301,7 +313,7 @@ pub fn get_image(
     let mut state = state.lock().unwrap();
 
     if state.images.is_empty() {
-        return Err("No images loaded.".to_string());
+        return Ok(example());
     }
 
     let new_index = (state.image_index as isize + update_index)
