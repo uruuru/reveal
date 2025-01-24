@@ -8,7 +8,7 @@ use serde_json::json;
 use std::{path::PathBuf, sync::Mutex};
 use tauri::Emitter;
 use tauri::{AppHandle, Manager, State};
-use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_fs::FilePath;
 use tauri_plugin_fs::FsExt;
 use tauri_plugin_store::StoreExt;
@@ -243,17 +243,6 @@ pub fn get_image_paths(
                 .unwrap();
 
             Ok((None, filtered_and_shuffled_paths))
-        }
-        Err(message) if !force_user_selection => {
-            app.dialog()
-                .message(format!(
-                    "We'll be showing exemplary images.\n\nWhat we have tried:\n{}",
-                    message
-                ))
-                .kind(MessageDialogKind::Warning)
-                .title("Could not find images.")
-                .blocking_show();
-            Err(message)
         }
         Err(message) => Err(message),
     }

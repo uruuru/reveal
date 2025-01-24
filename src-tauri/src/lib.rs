@@ -4,6 +4,8 @@ mod image_loading;
 mod ios;
 mod plane_covering;
 mod questions;
+#[cfg(target_os = "android")]
+mod reveal_plugin_android;
 mod utils;
 
 use common::{Polygon, RevealObject, RevealSettings, RevealState};
@@ -14,6 +16,7 @@ use std::sync::Mutex;
 use tauri::AppHandle;
 use tauri::Emitter;
 use tauri::Manager;
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_store::StoreExt;
 
 #[tauri::command]
@@ -68,6 +71,37 @@ fn get_image(
 /// a default path, or a user selected path.
 #[tauri::command]
 fn get_image_paths(force_selection: bool, verbose: bool, app: AppHandle) -> String {
+    let permissions_available;
+    #[cfg(target_os = "android")]
+    {
+        use reveal_plugin_android::{PermissionResponse, RevealAndroidExt};
+        permissions_available = match app.reveal_android().check_and_request_permissions() {
+            Ok(PermissionResponse { value: Some(code) })
+                if code == reveal_plugin_android::PERMISSION_GRANTED =>
+            {
+                true
+            }
+            _ => false,
+        }
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        permissions_available = true;
+    }
+
+    if !permissions_available {
+        app.dialog()
+            .message(format!(
+                "We do not have the permissions to access images \
+                and hence will be showing exemplary images instead."
+            ))
+            .kind(MessageDialogKind::Warning)
+            .title("Permissions missing.")
+            .blocking_show();
+        app.emit("image-paths-failed", "NoPermissions").unwrap();
+        return "".into();
+    }
+
     tauri::async_runtime::spawn(async move {
         match image_loading::get_image_paths(force_selection, &app, verbose) {
             Ok((container, paths)) => {
@@ -82,16 +116,27 @@ fn get_image_paths(force_selection: bool, verbose: bool, app: AppHandle) -> Stri
             }
             Err(message) => {
                 // TODO return proper errors and differentiate accordingly here
-                if message != "User canceled." {
+                if message != "User canceled manual selection." || !force_selection {
                     let state = app.state::<Mutex<RevealState>>();
                     let mut state = state.lock().unwrap();
                     state.images.clear();
                     state.image_index = 0;
+
+                    app.dialog()
+                        .message(format!(
+                            "We'll be showing exemplary images.\n\nWhat we have tried:\n{}",
+                            message
+                        ))
+                        .kind(MessageDialogKind::Warning)
+                        .title("Could not find images.")
+                        .blocking_show();
+
                     app.emit("image-paths-failed", message).unwrap();
                 }
             }
         }
     });
+
     "ok".to_string()
 }
 
@@ -113,7 +158,7 @@ fn load_covering(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
@@ -123,7 +168,14 @@ pub fn run() {
                 .level(log::LevelFilter::Debug)
                 .build(),
         )
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_opener::init());
+
+    #[cfg(target_os = "android")]
+    {
+        builder = builder.plugin(reveal_plugin_android::init());
+    }
+
+    builder
         .setup(|app| {
             app.store("settings.json")?;
             app.manage(Mutex::new(RevealState::default()));
@@ -133,6 +185,7 @@ pub fn run() {
                 let handle = app.handle().to_owned();
                 ios::mark_home_dir(&handle);
             }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
