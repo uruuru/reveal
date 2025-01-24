@@ -1,17 +1,25 @@
 package li.oiu.reveal
 
-import android.app.Activity
-import app.tauri.annotation.Command
-import app.tauri.annotation.TauriPlugin
-import app.tauri.plugin.Plugin
-import app.tauri.plugin.Invoke
-import app.tauri.plugin.JSObject
 import android.Manifest
+import android.app.Activity
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.webkit.MimeTypeMap
 import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import app.tauri.annotation.Command
+import app.tauri.annotation.InvokeArg
+import app.tauri.annotation.TauriPlugin
+import app.tauri.plugin.Invoke
+import app.tauri.plugin.JSObject
+import app.tauri.plugin.Plugin
+
+@InvokeArg
+class UrlArgs {
+  var value: String? = null
+}
 
 @TauriPlugin
 class RevealPlugin(private val activity: Activity) : Plugin(activity) {
@@ -66,4 +74,18 @@ class RevealPlugin(private val activity: Activity) : Plugin(activity) {
       invoke.resolve(obj)
     }
   }
+
+  @Command
+  fun getMimeType(invoke: Invoke) {
+    val args = invoke.parseArgs(UrlArgs::class.java)
+    val uri = Uri.parse(args.value)
+    
+    val mimeType = activity.contentResolver.getType(uri)
+    val fileExtension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+
+    val obj = JSObject()
+    obj.put("value", fileExtension)
+    invoke.resolve(obj)
+  }
+
 }

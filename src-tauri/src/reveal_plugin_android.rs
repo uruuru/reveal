@@ -14,12 +14,23 @@ pub struct PermissionResponse {
     pub value: Option<isize>,
 }
 
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct MimeRequestResponse {
+    pub value: Option<String>,
+}
+
 pub struct RevealAndroid<R: Runtime>(PluginHandle<R>);
 
 impl<R: Runtime> RevealAndroid<R> {
     pub fn check_and_request_permissions(&self) -> Result<PermissionResponse, String> {
         self.0
             .run_mobile_plugin("checkAndRequestPermissions", ())
+            .map_err(|e| e.to_string())
+    }
+
+    pub fn get_mime_type(&self, url: MimeRequestResponse) -> Result<MimeRequestResponse, String> {
+        self.0
+            .run_mobile_plugin("getMimeType", url)
             .map_err(|e| e.to_string())
     }
 }
