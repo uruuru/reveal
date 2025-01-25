@@ -300,7 +300,7 @@ function registerTauriEvents() {
     const [container, count] = event.payload;
     const plural = count > 1 ? "s" : "";
     if (container) {
-      state.locationSpan.textContent = `Image${plural} from: ${event.payload}.`;
+      state.locationSpan.textContent = `Image${plural} from: ${container}.`;
     } else {
       state.locationSpan.textContent = `Image${plural} hand-selected.`;
     }
