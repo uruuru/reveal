@@ -134,6 +134,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
     folder_or_files
 }
 
+#[warn(unused_variables)]
 fn get_image_paths_user(
     app: &AppHandle,
     force_user_selection: bool,
@@ -142,10 +143,10 @@ fn get_image_paths_user(
 ) -> Result<FolderOrFiles, String> {
     // Folder picker currently not implemented for mobile, hence we work around it ...
     // We need to use the cfg attributes here, since 'blocking_pick_folder' is not available for compilation.
-    let folder_or_images = if folder { "a folder" } else { "images" };
     let selection;
     #[cfg(desktop)]
     {
+        let folder_or_images = if folder { "a folder" } else { "images" };
         if verbose && !force_user_selection {
             app.dialog()
                 .message(format!(
@@ -185,6 +186,7 @@ fn get_image_paths_user(
                 .blocking_show();
         }
 
+        #[allow(unused_mut)]
         let mut picker = app.dialog().file();
 
         // TODO revisit the filter in the future, currently it behaves inconsistently
