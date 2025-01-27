@@ -109,7 +109,7 @@ async function loadCovering() {
 
   // Update the svg accordingly
   state.svg.setAttribute("viewBox", `0 0 ${state.image.naturalWidth} ${state.image.naturalHeight}`);
-  state.svg.setAttribute("shape-rendering", "crispEdges");
+  state.svg.setAttribute("shape-rendering", "geometricPrecision");
   state.svg.replaceChildren();
 
   state.svgPolygons = [];
@@ -117,8 +117,10 @@ async function loadCovering() {
     const polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     state.svg.appendChild(polygon);
 
-    polygon.setAttribute("fill", getRandomColorHex());
-    polygon.setAttribute("stroke-width", "1");
+    const color = getRandomColorHex();
+    polygon.setAttribute("fill", color);
+    polygon.setAttribute("stroke", color);
+    polygon.setAttribute("stroke-width", ".2");
     polygon.setAttribute("points", points.map((p) => `${p.x},${p.y}`).join(" "));
     state.svgPolygons.push(polygon);
   }
