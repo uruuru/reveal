@@ -127,7 +127,8 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
         })
         .or_else(|e| {
             log::debug!("Asking the user to select a folder ...");
-            get_image_paths_user(app, false, verbose).map_err(|inner| e + "\n" + inner.as_str())
+            get_image_paths_user(app, false, true, verbose)
+                .map_err(|inner| e + "\n" + inner.as_str())
         });
 
     folder_or_files
@@ -136,29 +137,41 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
 fn get_image_paths_user(
     app: &AppHandle,
     force_user_selection: bool,
+    folder: bool,
     verbose: bool,
 ) -> Result<FolderOrFiles, String> {
     // Folder picker currently not implemented for mobile, hence we work around it ...
-    // ... by letting the user select an image within the desired folder.
     // We need to use the cfg attributes here, since 'blocking_pick_folder' is not available for compilation.
+    let folder_or_images = if folder { "a folder" } else { "images" };
     let selection;
     #[cfg(desktop)]
     {
         if verbose && !force_user_selection {
             app.dialog()
                 .message(format!(
-                    "Please select a folder in the next dialog \
+                    "Please select {folder_or_images} in the next dialog \
                     from which supported images will be loaded."
                 ))
-                .title("Select a folder.")
+                .title(format!("Select {folder_or_images}."))
                 .blocking_show();
         }
-        selection = app
-            .dialog()
-            .file()
-            .blocking_pick_folder()
-            .map(|f| FolderOrFiles::Folder(f))
-            .ok_or("User canceled manual selection.".to_string())
+
+        if folder {
+            selection = app
+                .dialog()
+                .file()
+                .blocking_pick_folder()
+                .map(|f| FolderOrFiles::Folder(f))
+                .ok_or("User canceled manual selection.".to_string());
+        } else {
+            selection = app
+                .dialog()
+                .file()
+                .blocking_pick_files()
+                // TODO We could add file filter here to narrow selection to supported types.
+                .map(|f| FolderOrFiles::Files(f))
+                .ok_or("User canceled manual selection.".to_string())
+        }
     }
     #[cfg(not(desktop))]
     {
@@ -171,26 +184,45 @@ fn get_image_paths_user(
                 .title("Select images.")
                 .blocking_show();
         }
-        selection = app
-            .dialog()
-            .file()
-            // TODO revisit in the future, currently iOS does not allow to pick anything
-            // and android delegates to another app for the selection process.
-            //.add_filter("images", &SUPPORTED_IMAGE_EXTENSIONS)
+
+        let mut picker = app.dialog().file();
+
+        // TODO revisit the filter in the future, currently it behaves inconsistently
+        // for both iOS and android.
+        // There's an open PR on this topic https://github.com/tauri-apps/plugins-workspace/issues/1578
+        #[cfg(target_os = "ios")]
+        {
+            // NOTE ios requires mimetypes, not extensions here at this point.
+            // With this behavior:
+            if folder {
+                // "image/jpeg", "text/plain" --> file picker (mixed types)
+                // at this point, must list all supported types
+                picker = picker.add_filter(
+                    "images_file_picker",
+                    &["image/jpeg", "image/png", "image/webp", "text/plain"],
+                );
+            } else {
+                // "image/jpeg" --> photo picker (also allows pngs and webp at this point)
+                picker = picker.add_filter("images_photo_picker", &["image/jpeg"]);
+            }
+        }
+
+        selection = picker
             .blocking_pick_files()
             .map(|f| FolderOrFiles::Files(f))
-            .ok_or("User canceled manual selection.".to_string())
+            .ok_or("User canceled manual selection.".to_string());
     }
     selection
 }
 
 pub fn get_image_paths(
     force_user_selection: bool,
+    folder: bool,
     app: &AppHandle,
     verbose: bool,
 ) -> Result<(Option<FilePath>, Vec<FilePath>), String> {
     let folder_or_files = if force_user_selection {
-        get_image_paths_user(app, force_user_selection, verbose)
+        get_image_paths_user(app, force_user_selection, folder, verbose)
     } else {
         get_image_paths_automatic(app, verbose)
     };
@@ -277,6 +309,7 @@ fn load_from_folder(folder_path: PathBuf) -> Vec<FilePath> {
     }
 }
 
+#[allow(unused_variables)]
 fn filter_to_supported_images(app: &AppHandle, file_paths: &[FilePath]) -> Vec<FilePath> {
     file_paths
         .iter()

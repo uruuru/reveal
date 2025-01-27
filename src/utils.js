@@ -5,6 +5,10 @@ function isMobile() {
   return navigator.maxTouchPoints > 0;
 }
 
+function isAndroid() {
+  return navigator.userAgent.toLowerCase().indexOf("android") > -1;
+}
+
 async function printDebug() {
   try {
     const frontendInfos = [
@@ -23,4 +27,4 @@ async function printDebug() {
   }
 }
 
-export { isMobile, printDebug };
+export { isAndroid, isMobile, printDebug };

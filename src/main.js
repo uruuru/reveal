@@ -1,5 +1,5 @@
 import { executeIfSettingsChanged, initializeSettingsListeners, loadSettings, resetSettings } from "./settings.js";
-import { printDebug } from "./utils.js";
+import { isAndroid, isMobile, printDebug } from "./utils.js";
 
 const { invoke } = window.__TAURI__.core;
 const { message } = window.__TAURI__.dialog;
@@ -9,6 +9,7 @@ const { load } = window.__TAURI__.store;
 
 const Action = Object.freeze({
   load: "l",
+  loadImages: "f",
   info: "i",
   next: "n",
   previous: "p",
@@ -155,7 +156,10 @@ async function executeAction(actionIdentifier) {
       await printDebug();
       break;
     case Action.load:
-      await invoke("get_image_paths", { forceSelection: true, verbose: state.inputVerbose.checked });
+      await invoke("get_image_paths", { forceSelection: true, folder: true, verbose: state.inputVerbose.checked });
+      break;
+    case Action.loadImages:
+      await invoke("get_image_paths", { forceSelection: true, folder: false, verbose: state.inputVerbose.checked });
       break;
     case Action.settings:
       // Toggle the state
@@ -343,6 +347,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   state.progressSpan = document.querySelector("#progress");
   state.locationSpan = document.querySelector("#location");
   state.qnaAnswersDiv = document.querySelector("#answers");
+  state.selectFolder = document.querySelector("#input-select-images");
+  state.selectImages = document.querySelector("#input-select-images-individual");
+
+  if (isAndroid()) {
+    state.selectFolder.style.display = "none";
+  } else if (isMobile()) {
+    state.selectFolder.textContent = "From Files";
+    state.selectImages.textContent = "From Photos";
+  }
 
   // Settings
   state.settingsDiv = document.querySelector("#settings");
@@ -368,7 +381,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerTauriEvents();
 
   // UI ready, request image paths to be loaded.
-  invoke("get_image_paths", { forceSelection: false, verbose: state.inputVerbose.checked });
+  invoke("get_image_paths", { forceSelection: false, folder: true, verbose: state.inputVerbose.checked });
 
   debug("Done.");
 });

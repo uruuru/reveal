@@ -85,7 +85,7 @@ fn get_image(
 /// Either detects image paths within a previously used path,
 /// a default path, or a user selected path.
 #[tauri::command]
-fn get_image_paths(force_selection: bool, verbose: bool, app: AppHandle) -> String {
+fn get_image_paths(force_selection: bool, folder: bool, verbose: bool, app: AppHandle) -> String {
     let permissions_available;
     #[cfg(target_os = "android")]
     {
@@ -118,7 +118,7 @@ fn get_image_paths(force_selection: bool, verbose: bool, app: AppHandle) -> Stri
     }
 
     tauri::async_runtime::spawn(async move {
-        match image_loading::get_image_paths(force_selection, &app, verbose) {
+        match image_loading::get_image_paths(force_selection, folder, &app, verbose) {
             Ok((container, paths)) => {
                 let img_cnt = paths.len();
                 log::debug!("Found {} images.", img_cnt);
