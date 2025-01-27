@@ -41,7 +41,7 @@ async function getImage(u) {
       state.qnaAnswersDiv.innerHTML = "";
       state.qnaAnswersDiv.innerHTML = revealObject.answers
         .map(
-          (a, idx) => `<button 
+          (a, idx) => `<button
             data-idx=${idx}
             class='answer'>${a}
           </button>`,
@@ -201,7 +201,17 @@ function registerKeyboard() {
         action = Action.uncover;
         break;
       case "Delete":
+      case "ArrowDown":
         action = Action.clear;
+        break;
+      case "ArrowUp":
+        action = Action.reset;
+        break;
+      case "ArrowLeft":
+        action = Action.previous;
+        break;
+      case "ArrowRight":
+        action = Action.next;
         break;
       default:
     }
