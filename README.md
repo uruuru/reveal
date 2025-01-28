@@ -7,6 +7,10 @@
 Reveal is a simple interactive game where participants have to identify
 a partly visible image as quick as possible.
 
+Windows | Linux (Ubuntu 24.04) | macOS | Android | iOS
+-- | -- | -- | -- | --
+<img src="docs/images/reveal_windows.png" width="200px" alt="Windows"> | <img src="docs/images/reveal_ubuntu.png" width="200px" alt="Windows"> | <img src="docs/images/reveal_macOS.png" width="200px" alt="Windows"> | <img src="docs/images/reveal_android.png" width="100px" alt="Windows"> | <img src="docs/images/reveal_ios.png" width="200px" alt="Windows">
+
 ## Controls
 
 The game can either be controlled via the control buttons in the top-right,
@@ -43,9 +47,6 @@ Due to current limitations in the underlying framework,
 Android and iOS only support selecting individual images.
 On iOS it is possible to either select images from files
 or from Photos.
-
-## Examples
-TODO
 
 
 # Trivia
