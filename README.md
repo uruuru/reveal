@@ -4,12 +4,18 @@
 
 # Reveal!
 
-Reveal is a simple interactive game where participants have to identify
+Reveal is a simple interactive game, best played as a group, where participants have to identify
 a partly visible image as quick as possible.
+
+Downloads can be found in the [releases section](https://github.com/uruuru/reveal/releases).
+
+Windows | Linux (Ubuntu 24.04) | macOS | Android | iOS
+-- | -- | -- | -- | --
+<img src="docs/images/reveal_windows.png" width="200px" alt="Windows"> | <img src="docs/images/reveal_ubuntu.png" width="200px" alt="Windows"> | <img src="docs/images/reveal_macOS.png" width="200px" alt="Windows"> | <img src="docs/images/reveal_android.png" width="100px" alt="Windows"> | <img src="docs/images/reveal_ios.png" width="200px" alt="Windows">
 
 ## Controls
 
-The game can either be controlled via the control buttons in the top-right,
+The game can be controlled via the control buttons in the top-right,
 via hotkeys on desktops, or via touch and swipe gestures on mobile devices.
 
 Action | Desktop | Mobile
@@ -44,9 +50,6 @@ Android and iOS only support selecting individual images.
 On iOS it is possible to either select images from files
 or from Photos.
 
-## Examples
-TODO
-
 
 # Trivia
 The motivation to implement the game was getting to know Rust and Tauri,
@@ -64,6 +67,8 @@ from a single code base.
 
 ```
 cargo tauri dev/build/...
+# or
+npx @tauri-apps/cli@latest build/dev
 ```
 
 ```
