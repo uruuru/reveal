@@ -134,7 +134,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
     folder_or_files
 }
 
-#[warn(unused_variables)]
+#[allow(unused_variables)]
 fn get_image_paths_user(
     app: &AppHandle,
     force_user_selection: bool,
