@@ -11,10 +11,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-latest" # for Arm based macs (M1 and above).
-            args: "--target aarch64-apple-darwin"
-          #- platform: "macos-latest" # for Intel based macs.
-          #  args: "--target x86_64-apple-darwin"
+          #- platform: "macos-latest" # for Arm based macs (M1 and above).
+          #  args: "--target aarch64-apple-darwin"
+          - platform: "macos-latest" # for Intel based macs.
+            args: "--target x86_64-apple-darwin"
           #- platform: "ubuntu-22.04" # use oldest supported
           #  args: ""
           #- platform: "windows-latest"
@@ -61,7 +61,7 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
-          security find-identity -v -p codesigning build.keychain
+          #security find-identity -v -p codesigning build.keychain
       
       - name: Verify Certificate
         if: matrix.platform == 'macos-latest'
