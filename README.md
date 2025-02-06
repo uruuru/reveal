@@ -7,11 +7,11 @@
 Reveal is a simple interactive game, best played as a group, where participants have to identify
 a partly visible image as quick as possible.
 
-The game does not come with images to play. You can 
+The game does not come with images to play. You can
 * collect and compile them to your linking through any image search database,
 * ask your favorite image generation AI to generate them for you,
-* use your personal image collection to reminisce about your past,
-* or do whatever else comes to your mind.
+* use your personal image collection to reminisce about your past, or
+* do whatever else comes to your mind.
 
 As AI gets smaller, we may add image generation on-the-fly in the future.
 
@@ -61,10 +61,16 @@ or from Photos.
 
 
 # Trivia
-The motivation to implement the game was getting to know Rust and Tauri,
-and understanding to which extent development for multiple platforms (including mobile) is possible
-from a single code base.
+A simple version of the game was initially created in a single evening using Python and Qt. The motivation to re-implement it with Tauri and Rust, although seemingly overkill, was to become familiar with the framework and the language. Another goal was to understand the feasibility of developing for multiple platforms (including mobile) from a single code base.
 
+In terms of effort distribution, building the game itself took less than 1% of the time (no surprise there). About 80% of the time was spent setting up the tools[^1], and the remaining time was spent dealing with platform-specific quirks that are not (yet) fully abstracted by Tauri.
+
+[^1]: And learning that a physical MacBook is mandatory to properly develop and compile for macOS/iOS. Admittedly, there are some cloud offerings, but none of them seem to provide reasonable usability.
+
+# License
+The project's code is licensed under the MIT License. See [LICENSE-MIT](LICENSE-MIT) for details.
+
+Other assets, such as logos or artwork, are not covered by the source code license.
 
 # Development
 
@@ -75,9 +81,9 @@ from a single code base.
 ## Building
 
 ```
-cargo tauri dev/build/...
+cargo tauri [dev/build/...]
 # or
-npx @tauri-apps/cli@latest build/dev
+npx @tauri-apps/cli@latest [build/dev]
 ```
 
 ```
@@ -99,4 +105,11 @@ cargo tauri ios build
 Windows (cross-compiled on linux)
 ```
 cargo tauri build --runner cargo-xwin --target x86_64-pc-windows-msvc
+```
+
+Android
+```
+cargo tauri android build --aab
+
+cargo tauri android build --apk --split-per-abi
 ```
