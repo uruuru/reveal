@@ -106,10 +106,11 @@ fn get_image_paths(force_selection: bool, folder: bool, verbose: bool, app: AppH
 
     if !permissions_available {
         app.dialog()
-            .message(format!(
+            .message(
                 "We do not have the permissions to access images \
                 and hence will be showing exemplary images instead."
-            ))
+                    .to_string(),
+            )
             .kind(MessageDialogKind::Warning)
             .title("Permissions missing.")
             .blocking_show();

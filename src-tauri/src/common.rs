@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri_plugin_fs::FilePath;
 use ts_rs::TS;
 
@@ -60,19 +60,25 @@ pub struct RevealObject {
     pub correct_answer: usize,
 }
 
-#[derive(Debug, Serialize)]
+/// Represents a point in 2D space.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Point {
     pub x: f64,
     pub y: f64,
 }
 
-#[derive(Debug, Serialize)]
+/// Represents a polygon defined by a list of points.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Polygon {
     pub pnts: Vec<Point>,
 }
 
+/// Represents an image with associated metadata.
 pub struct ImageWithMeta {
+    /// The base64-encoded image data.
     pub base64: String,
+    /// The type of the image (e.g., "jpeg", "png").
     pub image_type: String,
+    /// The date and time when the image was taken.
     pub date_taken: Option<NaiveDateTime>,
 }

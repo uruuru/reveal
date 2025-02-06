@@ -62,12 +62,12 @@ pub fn cover_triangles(n: usize, w: f64, h: f64) -> Vec<Polygon> {
 
     log::debug!("Created {} triangles.", triangles.len());
 
-    return triangles;
+    triangles
 }
 
 /// To improve the shape of the triangles, randomly distribute
-/// points into cells instead of only to the plane itself.
-/// Otherwise we could end up with lenghty and pointy triangles.
+/// points into cells instead of only on the plane itself.
+/// Otherwise, we could end up with lengthy and pointy triangles.
 fn random_points_cell(n: usize, w: f64, h: f64) -> Vec<delaunator::Point> {
     let mut rng = rand::thread_rng();
 
@@ -100,7 +100,7 @@ fn random_points_cell(n: usize, w: f64, h: f64) -> Vec<delaunator::Point> {
         points.push(delaunator::Point {
             x: rng.gen_range(0.0..w),
             y: rng.gen_range(0.0..h),
-        });
+            });
     }
 
     points

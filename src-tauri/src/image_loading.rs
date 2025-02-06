@@ -5,7 +5,10 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use rand::Rng;
 use serde_json::json;
-use std::{path::PathBuf, sync::Mutex};
+use std::{
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
 use tauri::Emitter;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_dialog::DialogExt;
@@ -27,7 +30,7 @@ const SUPPORTED_IMAGE_EXTENSIONS: [&str; 6] = ["jpg", "jpeg", "png", "webp", "gi
 #[cfg(not(desktop))]
 const SUPPORTED_IMAGE_EXTENSIONS: [&str; 4] = ["jpg", "jpeg", "png", "webp"];
 
-fn exists_is_dir_and_non_empty(path: &PathBuf) -> bool {
+fn exists_is_dir_and_non_empty(path: &Path) -> bool {
     path.exists()
         && path.is_dir()
         && path
@@ -77,7 +80,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                     }
                 })
                 .map(FilePath::from)
-                .map(|f| FolderOrFiles::Folder(f))
+                .map(FolderOrFiles::Folder)
         })
         .or_else(|e| {
             if cfg!(target_os = "android") {
@@ -102,7 +105,7 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                         }
                     })
                     .map(FilePath::from)
-                    .map(|f| FolderOrFiles::Folder(f))
+                    .map(FolderOrFiles::Folder)
             } else if cfg!(desktop) {
                 log::debug!("Trying 'reveal_images' next to the executable ...");
                 std::env::current_exe()
@@ -111,14 +114,14 @@ fn get_image_paths_automatic(app: &AppHandle, verbose: bool) -> Result<FolderOrF
                         exe_path
                             .parent()
                             .map(ToOwned::to_owned)
-                            .ok_or(e.clone() + "\nUnable to access exe's parent folder.".into())
+                            .ok_or(e.clone() + "\nUnable to access exe's parent folder.")
                     })
                     .map(|exe_dir| exe_dir.join("reveal_images"))
                     .and_then(|reveal_dir| {
                         if exists_is_dir_and_non_empty(&reveal_dir) {
                             Ok(FolderOrFiles::Folder(FilePath::from(reveal_dir)))
                         } else {
-                            Err(e + "\nNo 'reveal_images' folder next to the executable.".into())
+                            Err(e + "\nNo 'reveal_images' folder next to the executable.")
                         }
                     })
             } else {
@@ -162,7 +165,7 @@ fn get_image_paths_user(
                 .dialog()
                 .file()
                 .blocking_pick_folder()
-                .map(|f| FolderOrFiles::Folder(f))
+                .map(FolderOrFiles::Folder)
                 .ok_or("User canceled manual selection.".to_string());
         } else {
             selection = app
@@ -170,7 +173,7 @@ fn get_image_paths_user(
                 .file()
                 .blocking_pick_files()
                 // TODO We could add file filter here to narrow selection to supported types.
-                .map(|f| FolderOrFiles::Files(f))
+                .map(FolderOrFiles::Files)
                 .ok_or("User canceled manual selection.".to_string())
         }
     }
@@ -237,7 +240,7 @@ pub fn get_image_paths(
                 app.dialog()
                     .message(format!(
                         "We'll collect all images within this folder:\n{}",
-                        folder.to_string()
+                        folder
                     ))
                     .blocking_show();
             }
@@ -245,8 +248,7 @@ pub fn get_image_paths(
             store.set("loaded_from_folder", json!(folder.as_path().unwrap()));
 
             let filtered_and_shuffled_paths = match folder.clone() {
-                FilePath::Path(pb) => Some(pb)
-                    .map(load_from_folder)
+                FilePath::Path(pb) => Some(load_from_folder(pb))
                     .map(|t| filter_to_supported_images(app, &t))
                     .map(|mut v| {
                         shuffle(&mut v);
@@ -269,9 +271,11 @@ pub fn get_image_paths(
                 .unwrap();
 
             if verbose {
-                let plural = (filtered_and_shuffled_paths.len() > 1)
-                    .then(|| "s")
-                    .unwrap_or("");
+                let plural = if filtered_and_shuffled_paths.len() > 1 {
+                    "s"
+                } else {
+                    ""
+                };
                 let info_message = if number_of_selected != filtered_and_shuffled_paths.len() {
                     format!(
                         "We'll use {} of the {} selected image{}. The others are not supported.",
@@ -394,7 +398,7 @@ pub fn get_image(
     }
     .map(|bytes| (general_purpose::STANDARD.encode(&bytes), read_exif(&bytes)))
     .map(|(base64, exif)| ImageWithMeta {
-        base64: base64,
+        base64,
         date_taken: match exif {
             // TODO only do this if needed
             Ok(date_taken) => Some(date_taken),
@@ -458,6 +462,6 @@ fn read_exif(bytes: &[u8]) -> Result<NaiveDateTime, String> {
         .and_then(|s| {
             log::debug!("Exif str: {}", s);
             NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
-                .map_err(|e| format!("{} ({})", e.to_string(), s))
+                .map_err(|e| format!("{} ({})", e, s))
         })
 }
