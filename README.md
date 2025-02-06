@@ -7,6 +7,15 @@
 Reveal is a simple interactive game, best played as a group, where participants have to identify
 a partly visible image as quick as possible.
 
+The game does not come with images to play. You can 
+* collect and compile them to your linking through any image search database,
+* ask your favorite image generation AI to generate them for you,
+* use your personal image collection to reminisce about your past,
+* or do whatever else comes to your mind.
+
+As AI gets smaller, we may add image generation on-the-fly in the future.
+
+## Downloads
 Downloads can be found in the [releases section](https://github.com/uruuru/reveal/releases).
 
 Windows | Linux (Ubuntu 24.04) | macOS | Android | iOS
